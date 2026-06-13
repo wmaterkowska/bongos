@@ -1,0 +1,257 @@
+/* ── CSS variables ──────────────────────────────────────────────────── */
+:root {
+  --colour-vertex:   #7c3aed;
+  --colour-external: #059669;
+  --colour-edge:     #64748b;
+  --colour-warning:  #d97706;
+  --colour-bg:       #0f172a;
+  --colour-surface:  #1e293b;
+  --colour-border:   #334155;
+  --colour-text:     #e2e8f0;
+  --colour-muted:    #94a3b8;
+  --toolbar-h:       3rem;
+  --palette-w:       180px;
+  --output-w:        320px;
+}
+
+/* ── Reset ──────────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: system-ui, sans-serif;
+  font-size: 14px;
+  background: var(--colour-bg);
+  color: var(--colour-text);
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ── Toolbar ────────────────────────────────────────────────────────── */
+.toolbar {
+  height: var(--toolbar-h);
+  background: var(--colour-surface);
+  border-bottom: 1px solid var(--colour-border);
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0 1rem;
+  flex-shrink: 0;
+}
+
+.toolbar-title {
+  font-weight: 600;
+  font-size: 1rem;
+  margin-right: auto;
+}
+
+.toolbar select,
+.toolbar button {
+  background: var(--colour-bg);
+  color: var(--colour-text);
+  border: 1px solid var(--colour-border);
+  border-radius: 4px;
+  padding: 0.25rem 0.6rem;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.toolbar button:hover {
+  background: var(--colour-border);
+}
+
+/* ── Three-panel layout ─────────────────────────────────────────────── */
+.layout {
+  display: grid;
+  grid-template-columns: var(--palette-w) 1fr var(--output-w);
+  flex: 1;
+  overflow: hidden;
+}
+
+/* ── Palette ────────────────────────────────────────────────────────── */
+.palette {
+  background: var(--colour-surface);
+  border-right: 1px solid var(--colour-border);
+  overflow-y: auto;
+  padding: 1rem 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.palette-heading {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--colour-muted);
+  margin-bottom: 0.25rem;
+}
+
+.palette-item {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.5rem 0.6rem;
+  border: 1px solid var(--colour-border);
+  border-radius: 6px;
+  cursor: grab;
+  user-select: none;
+}
+
+.palette-item:hover {
+  background: var(--colour-border);
+}
+
+.palette-item:active {
+  cursor: grabbing;
+}
+
+.palette-divider {
+  border: none;
+  border-top: 1px solid var(--colour-border);
+  margin: 0.25rem 0;
+}
+
+.instructions {
+  color: var(--colour-muted);
+  font-size: 12px;
+  line-height: 1.6;
+  padding-left: 1.1rem;
+}
+
+/* ── Canvas ─────────────────────────────────────────────────────────── */
+.canvas-section {
+  position: relative;
+  overflow: hidden;
+  background: var(--colour-bg);
+}
+
+.canvas-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* Node styles (applied via JS as SVG classes) */
+.node-vertex circle {
+  fill: var(--colour-vertex);
+  stroke: var(--colour-vertex);
+  stroke-width: 2;
+}
+
+.node-vertex.selected circle {
+  stroke: white;
+  stroke-width: 3;
+}
+
+.node-vertex.invalid circle {
+  stroke: var(--colour-warning);
+  stroke-width: 3;
+}
+
+.node-external circle {
+  fill: none;
+  stroke: var(--colour-external);
+  stroke-width: 2.5;
+}
+
+.node-external.selected circle {
+  stroke: white;
+}
+
+.node-label {
+  fill: white;
+  font-size: 10px;
+  text-anchor: middle;
+  dominant-baseline: central;
+  pointer-events: none;
+  user-select: none;
+}
+
+.edge-line {
+  stroke: var(--colour-edge);
+  stroke-width: 2;
+  cursor: pointer;
+}
+
+.edge-line:hover {
+  stroke: var(--colour-muted);
+  stroke-width: 3;
+}
+
+/* ── Output panel ───────────────────────────────────────────────────── */
+.output-panel {
+  background: var(--colour-surface);
+  border-left: 1px solid var(--colour-border);
+  overflow-y: auto;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.output-heading {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--colour-muted);
+  flex-shrink: 0;
+}
+
+.output-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.output-placeholder {
+  color: var(--colour-muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+/* Contribution cards */
+.contrib-card {
+  border: 1px solid var(--colour-border);
+  border-radius: 6px;
+  padding: 0.6rem 0.75rem;
+}
+
+.contrib-card.warning {
+  border-color: var(--colour-warning);
+  background: rgba(217, 119, 6, 0.1);
+}
+
+.contrib-header {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-weight: 600;
+  font-size: 13px;
+  margin-bottom: 0.4rem;
+}
+
+.contrib-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.contrib-formula {
+  overflow-x: auto;
+  padding: 0.25rem 0;
+}
+
+.contrib-desc {
+  color: var(--colour-muted);
+  font-size: 12px;
+  margin-top: 0.35rem;
+  line-height: 1.5;
+}
+
+.contrib-card.combined {
+  border-color: #4f46e5;
+  background: rgba(79, 70, 229, 0.08);
+}

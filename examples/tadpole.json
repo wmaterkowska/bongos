@@ -1,0 +1,14 @@
+{
+  "name": "Tadpole on external line (1-loop)",
+  "nodes": [
+    { "id": 0, "type": "vertex",   "x": 260, "y": 220 },
+    { "id": 1, "type": "external", "x": 140, "y": 220 },
+    { "id": 2, "type": "external", "x": 380, "y": 220 }
+  ],
+  "edges": [
+    { "id": 0, "from": 1, "to": 0 },
+    { "id": 1, "from": 2, "to": 0 },
+    { "id": 2, "from": 0, "to": 0 },
+    { "id": 3, "from": 0, "to": 0 }
+  ]
+}
