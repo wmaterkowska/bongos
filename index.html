@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -7,9 +8,10 @@
   <link rel="stylesheet" href="lib/katex/katex.min.css" />
   <link rel="stylesheet" href="style.css" />
 </head>
+
 <body>
   <header class="toolbar">
-    <span class="toolbar-title">Feynman Diagram Builder</span>
+    <span class="toolbar-title">Bongos - Feynman Diagram Builder</span>
     <select id="example-select" title="Load example diagram">
       <option value="">Load example…</option>
       <option value="examples/tree-2to2.json">2→2 scattering (tree level)</option>
@@ -27,13 +29,13 @@
         <svg width="32" height="32" viewBox="0 0 32 32">
           <circle cx="16" cy="16" r="10" fill="var(--colour-vertex)" />
         </svg>
-        <span>Vertex<br/><small>−iλ</small></span>
+        <span>Vertex<br /><small>−iλ</small></span>
       </div>
       <div class="palette-item" draggable="true" data-type="external" title="Drag onto canvas">
         <svg width="32" height="32" viewBox="0 0 32 32">
           <circle cx="16" cy="16" r="8" fill="none" stroke="var(--colour-external)" stroke-width="2.5" />
         </svg>
-        <span>External leg<br/><small>factor 1</small></span>
+        <span>External leg<br /><small>factor 1</small></span>
       </div>
 
       <hr class="palette-divider" />
@@ -51,8 +53,7 @@
     <section class="canvas-section" aria-label="Diagram canvas">
       <svg id="canvas" class="canvas-svg">
         <defs>
-          <marker id="arrowhead" markerWidth="8" markerHeight="6"
-                  refX="8" refY="3" orient="auto">
+          <marker id="arrowhead" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
             <polygon points="0 0, 8 3, 0 6" fill="var(--colour-edge)" />
           </marker>
         </defs>
@@ -73,4 +74,5 @@
   <script src="lib/katex/katex.min.js"></script>
   <script type="module" src="app.js"></script>
 </body>
+
 </html>
