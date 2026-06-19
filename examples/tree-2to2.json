@@ -1,18 +1,16 @@
 {
   "name": "2→2 scattering (tree level)",
   "nodes": [
-    { "id": 0, "type": "vertex",   "x": 190, "y": 220 },
-    { "id": 1, "type": "vertex",   "x": 330, "y": 220 },
-    { "id": 2, "type": "external", "x": 100, "y": 150 },
-    { "id": 3, "type": "external", "x": 100, "y": 290 },
-    { "id": 4, "type": "external", "x": 420, "y": 150 },
-    { "id": 5, "type": "external", "x": 420, "y": 290 }
+    { "id": 0, "type": "vertex",   "x": 260, "y": 220 },
+    { "id": 1, "type": "external", "x": 140, "y": 140 },
+    { "id": 2, "type": "external", "x": 140, "y": 300 },
+    { "id": 3, "type": "external", "x": 380, "y": 140 },
+    { "id": 4, "type": "external", "x": 380, "y": 300 }
   ],
   "edges": [
-    { "id": 0, "from": 0, "to": 1 },
+    { "id": 0, "from": 1, "to": 0 },
     { "id": 1, "from": 2, "to": 0 },
     { "id": 2, "from": 3, "to": 0 },
-    { "id": 3, "from": 4, "to": 1 },
-    { "id": 4, "from": 5, "to": 1 }
+    { "id": 3, "from": 4, "to": 0 }
   ]
 }

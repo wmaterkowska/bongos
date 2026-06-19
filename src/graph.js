@@ -56,7 +56,11 @@ export function getNeighbours(graph, nodeId) {
 }
 
 export function countLegs(graph, nodeId) {
-  return graph.edges.filter(e => e.from === nodeId || e.to === nodeId).length;
+  return graph.edges.reduce((count, e) => {
+    if (e.from === nodeId && e.to === nodeId) return count + 2; // self-loop: both ends attach here
+    if (e.from === nodeId || e.to === nodeId) return count + 1;
+    return count;
+  }, 0);
 }
 
 export function internalEdges(graph) {

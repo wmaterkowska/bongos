@@ -92,9 +92,19 @@ function assertEqual(label, actual, expected) {
   assertEqual('v2 has 1 leg', countLegs(g, v2.id), 1);
 }
 
+// ── countLegs with a self-loop ──────────────────────────────────────────
+{
+  console.log('countLegs — self-loop counts as 2 legs');
+  let g = createGraph();
+  g = addNode(g, 'vertex', 0, 0);
+  const [v] = g.nodes;
+  g = addEdge(g, v.id, v.id);
+  assertEqual('self-loop contributes 2 legs', countLegs(g, v.id), 2);
+}
+
 // ── internalEdges / externalEdges ─────────────────────────────────────
 {
-  console.log('internalEdges / externalEdges — tree-level 2→2');
+  console.log('internalEdges / externalEdges — two vertices, one internal edge');
   let g = createGraph();
   // V0 and V1 are vertices; E2–E5 are external
   g = addNode(g, 'vertex', 190, 220);   // 0
@@ -117,7 +127,7 @@ function assertEqual(label, actual, expected) {
 // ── countLoops ───────────────────────────────────────────────────────
 {
   console.log('countLoops');
-  // Tree-level 2→2: V=2, I=1 → L = 1 - 2 + 1 = 0
+  // Two vertices, one internal edge: V=2, I=1 → L = 1 - 2 + 1 = 0
   let g = createGraph();
   g = addNode(g, 'vertex', 0, 0);
   g = addNode(g, 'vertex', 10, 0);
