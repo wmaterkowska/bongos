@@ -1,21 +1,13 @@
-import { internalEdges, externalEdges, countLoops } from './graph.js';
+import { computeAutomorphismCount } from './automorphism.js';
 
-// Stage 5a: lookup table for common φ⁴ diagrams.
-// Matched by (V, E, I, L) signature. Stage 5b (full automorphism search) comes in v2.
-
-const LOOKUP = [
-  // (V, E, I, L) → S
-  { V: 1, E: 4, I: 0, L: 0, S: 1 },  // tree-level 2→2 scattering (single vertex, 4 external)
-  { V: 2, E: 4, I: 2, L: 1, S: 2 },  // 1-loop bubble correction to 2→2 scattering
-  { V: 1, E: 0, I: 2, L: 2, S: 8 },  // figure-8 vacuum bubble  (approx — true S=8 needs automorphism)
-  { V: 2, E: 2, I: 3, L: 2, S: 2 },  // sunset / sunrise diagram
-  { V: 1, E: 2, I: 1, L: 1, S: 2 },  // tadpole on external line
-];
-
+// Stage 5a (v1) was a lookup table keyed by the (V, E, I, L) signature.
+// It's gone: that signature isn't a reliable cache key — the sunset diagram
+// (3 parallel lines between 2 vertices, S=6) and the double-tadpole (2
+// self-loops + 1 connecting line, S=4) both have V=2, E=2, I=3, L=2, so a
+// signature-only lookup returns the wrong S for one of them. Stage 5b
+// (src/automorphism.js) computes the exact answer directly from the graph's
+// real topology instead, and is fast enough at this scale to use always.
 export function computeSymmetryFactor(graph, analysis) {
-  const { V, E, I, L } = analysis;
-  const match = LOOKUP.find(
-    row => row.V === V && row.E === E && row.I === I && row.L === L
-  );
-  return match ? match.S : null; // null = unknown, rendered as '?'
+  if (analysis.V === 0) return null;
+  return computeAutomorphismCount(graph);
 }
