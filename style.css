@@ -170,6 +170,7 @@ body {
 }
 
 .edge-line {
+  fill: none;
   stroke: var(--colour-edge);
   stroke-width: 2;
   cursor: pointer;

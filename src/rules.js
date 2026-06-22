@@ -1,7 +1,6 @@
 import { internalEdges, externalEdges, countLoops, countLegs } from './graph.js';
-import { THEORY } from './constants.js';
 
-export function analyseGraph(graph) {
+export function analyseGraph(graph, theory) {
   const vertices = graph.nodes.filter(n => n.type === 'vertex');
   const V = vertices.length;
   const I = internalEdges(graph).length;
@@ -17,9 +16,9 @@ export function analyseGraph(graph) {
   // Check each vertex has exactly legsPerVertex legs
   for (const v of vertices) {
     const legs = countLegs(graph, v.id);
-    if (legs !== THEORY.legsPerVertex) {
+    if (legs !== theory.legsPerVertex) {
       warnings.push(
-        `Vertex #${v.id} has ${legs} leg${legs !== 1 ? 's' : ''} — expected ${THEORY.legsPerVertex}.`
+        `Vertex #${v.id} has ${legs} leg${legs !== 1 ? 's' : ''} — expected ${theory.legsPerVertex}.`
       );
     }
   }
@@ -35,7 +34,7 @@ export function analyseGraph(graph) {
   return { V, E, I, L, valid, warnings };
 }
 
-export function buildContributions(analysis, symmetryFactor) {
+export function buildContributions(analysis, symmetryFactor, theory) {
   const { V, E, I, L } = analysis;
   const contributions = [];
 
@@ -44,8 +43,8 @@ export function buildContributions(analysis, symmetryFactor) {
       id: 'vertices',
       label: 'Vertices',
       colour: '#7c3aed',
-      latex: `(-i\\lambda)^{${V}}`,
-      description: `One factor of −iλ per vertex. You have ${V} ${V === 1 ? 'vertex' : 'vertices'}.`,
+      latex: `(${theory.coupling.vertexFactor})^{${V}}`,
+      description: `${theory.coupling.description} You have ${V} ${V === 1 ? 'vertex' : 'vertices'}.`,
       count: V,
     });
   }
@@ -55,8 +54,8 @@ export function buildContributions(analysis, symmetryFactor) {
       id: 'propagators',
       label: 'Internal propagators',
       colour: '#2563eb',
-      latex: `\\left(\\frac{i}{p^2 - m^2 + i\\varepsilon}\\right)^{${I}}`,
-      description: `One propagator per internal line. You have ${I} internal ${I === 1 ? 'line' : 'lines'}.`,
+      latex: `\\left(${theory.propagator.latex}\\right)^{${I}}`,
+      description: `${theory.propagator.description} You have ${I} internal ${I === 1 ? 'line' : 'lines'}.`,
       count: I,
     });
   }
@@ -66,8 +65,8 @@ export function buildContributions(analysis, symmetryFactor) {
       id: 'external',
       label: 'External legs',
       colour: '#059669',
-      latex: `1^{${E}} = 1`,
-      description: `Scalar external legs each contribute factor 1. You have ${E}.`,
+      latex: `${theory.externalLeg.latex}^{${E}} = ${theory.externalLeg.latex}`,
+      description: `${theory.externalLeg.description} You have ${E}.`,
       count: E,
     });
   }
