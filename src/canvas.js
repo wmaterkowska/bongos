@@ -1,5 +1,6 @@
-import { addNode, addEdge, removeNode, removeEdge, updateNodePosition, getNode, countLegs } from './graph.js';
+import { addNode, addEdge, removeNode, removeEdge, flipEdge, updateNodePosition, getNode, countLegs } from './graph.js';
 import { NODE_RADIUS } from './constants.js';
+import { routeMomenta } from './momentum.js';
 
 const EDGE_LAYER = document.getElementById('edges-layer');
 const NODE_LAYER = document.getElementById('nodes-layer');
@@ -7,6 +8,7 @@ const NODE_LAYER = document.getElementById('nodes-layer');
 const PARALLEL_SPACING = 16;     // px between fanned-out lines sharing a node pair
 const LOOP_RADIUS = 26;          // how far a self-loop bulges from its vertex
 const LOOP_SPREAD = Math.PI / 7; // angular half-width of a self-loop's neck
+const LABEL_MARGIN = 14;         // extra px beyond the line/loop where its momentum label sits
 
 let _graph = null;
 let _theory = null;
@@ -102,6 +104,12 @@ function onEdgeRightClick(e, edgeId) {
   emit();
 }
 
+function onEdgeClick(e, edgeId) {
+  e.stopPropagation();
+  _graph = flipEdge(_graph, edgeId);
+  emit();
+}
+
 function onNodeMouseDown(e, nodeId) {
   if (e.button !== 0) return;
   e.stopPropagation();
@@ -156,52 +164,148 @@ function renderEdges() {
     groups.get(key).push(edge);
   }
 
+  const momenta = routeMomenta(_graph);
   for (const group of groups.values()) {
-    group.forEach((edge, index) => renderEdge(edge, index, group.length));
+    group.forEach((edge, index) => renderEdge(edge, index, group.length, momenta.get(edge.id)));
   }
 }
 
-function renderEdge(edge, index, total) {
+function renderEdge(edge, index, total, momentum) {
   const from = getNode(_graph, edge.from);
   const to = getNode(_graph, edge.to);
   if (!from || !to) return;
 
+  const isSelfLoop = edge.from === edge.to;
+  const { d, labelPos } = isSelfLoop
+    ? selfLoopGeometry(from, index, total)
+    : parallelGeometry(from, to, index, total);
+
   const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-  path.setAttribute('d', edge.from === edge.to
-    ? selfLoopPath(from, index, total)
-    : parallelPath(from, to, index, total));
+  path.setAttribute('d', d);
+  path.setAttribute('marker-end', 'url(#arrowhead)');
   path.className.baseVal = 'edge-line';
 
   path.addEventListener('contextmenu', e => onEdgeRightClick(e, edge.id));
+  path.addEventListener('click', e => onEdgeClick(e, edge.id));
   EDGE_LAYER.appendChild(path);
+
+  const labelText = formatMomentumExpr(momentum);
+  if (labelText) {
+    const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    label.setAttribute('x', labelPos.x);
+    label.setAttribute('y', labelPos.y);
+    label.className.baseVal = 'edge-momentum-label';
+    label.textContent = labelText;
+    EDGE_LAYER.appendChild(label);
+  }
 }
 
-// Fans parallel edges between the same two nodes out into a symmetric set
-// of curves, e.g. 3 edges become offsets [-1, 0, 1] * PARALLEL_SPACING.
-function parallelPath(from, to, index, total) {
+// Fans parallel edges between the same two nodes out into a symmetric set of
+// curves, e.g. 3 edges become offsets [-1, 0, 1] * PARALLEL_SPACING. Endpoints
+// are trimmed back to each node's boundary (rather than its centre) so the
+// arrowhead marker lands just outside the circle instead of underneath it.
+function parallelGeometry(from, to, index, total) {
   const offset = (index - (total - 1) / 2) * PARALLEL_SPACING;
+  const rFrom = NODE_RADIUS[from.type] ?? 12;
+  const rTo = NODE_RADIUS[to.type] ?? 12;
+
   if (offset === 0) {
-    return `M ${from.x},${from.y} L ${to.x},${to.y}`;
+    const dx = to.x - from.x;
+    const dy = to.y - from.y;
+    const length = Math.hypot(dx, dy) || 1;
+    const ux = dx / length, uy = dy / length;
+    const start = { x: from.x + ux * rFrom, y: from.y + uy * rFrom };
+    const end = { x: to.x - ux * rTo, y: to.y - uy * rTo };
+    const nx = -uy, ny = ux;
+    return {
+      d: `M ${start.x},${start.y} L ${end.x},${end.y}`,
+      labelPos: {
+        x: (from.x + to.x) / 2 + nx * LABEL_MARGIN,
+        y: (from.y + to.y) / 2 + ny * LABEL_MARGIN,
+      },
+    };
   }
+
   const dx = to.x - from.x;
   const dy = to.y - from.y;
   const length = Math.hypot(dx, dy) || 1;
   const nx = -dy / length;
   const ny = dx / length;
-  const mx = (from.x + to.x) / 2 + nx * offset;
-  const my = (from.y + to.y) / 2 + ny * offset;
-  return `M ${from.x},${from.y} Q ${mx},${my} ${to.x},${to.y}`;
+  const control = {
+    x: (from.x + to.x) / 2 + nx * offset,
+    y: (from.y + to.y) / 2 + ny * offset,
+  };
+
+  // Trim each endpoint along its tangent direction (start -> control,
+  // control -> end) by that node's radius — a close approximation of the
+  // true curve/circle intersection, good enough at this node size.
+  const start = trimTowards(from, control, rFrom);
+  const end = trimTowards(to, control, rTo);
+
+  const labelDir = Math.sign(offset);
+  return {
+    d: `M ${start.x},${start.y} Q ${control.x},${control.y} ${end.x},${end.y}`,
+    labelPos: {
+      x: (from.x + to.x) / 2 + nx * (offset + labelDir * LABEL_MARGIN),
+      y: (from.y + to.y) / 2 + ny * (offset + labelDir * LABEL_MARGIN),
+    },
+  };
 }
 
 // Draws a self-loop as a small teardrop bulging away from the vertex.
-// Multiple self-loops on the same node fan out around it by angle.
-function selfLoopPath(node, index, total) {
+// Multiple self-loops on the same node fan out around it by angle. The loop
+// starts/ends just outside the node's boundary, not at its centre, for the
+// same arrowhead-visibility reason as parallelGeometry.
+function selfLoopGeometry(node, index, total) {
   const angle = -Math.PI / 2 + (index - (total - 1) / 2) * (Math.PI / 3);
-  const cx1 = node.x + Math.cos(angle - LOOP_SPREAD) * LOOP_RADIUS;
-  const cy1 = node.y + Math.sin(angle - LOOP_SPREAD) * LOOP_RADIUS;
-  const cx2 = node.x + Math.cos(angle + LOOP_SPREAD) * LOOP_RADIUS;
-  const cy2 = node.y + Math.sin(angle + LOOP_SPREAD) * LOOP_RADIUS;
-  return `M ${node.x},${node.y} C ${cx1},${cy1} ${cx2},${cy2} ${node.x},${node.y}`;
+  const r = NODE_RADIUS[node.type] ?? 12;
+  const c1 = {
+    x: node.x + Math.cos(angle - LOOP_SPREAD) * LOOP_RADIUS,
+    y: node.y + Math.sin(angle - LOOP_SPREAD) * LOOP_RADIUS,
+  };
+  const c2 = {
+    x: node.x + Math.cos(angle + LOOP_SPREAD) * LOOP_RADIUS,
+    y: node.y + Math.sin(angle + LOOP_SPREAD) * LOOP_RADIUS,
+  };
+  const start = trimTowards(node, c1, r);
+  const end = trimTowards(node, c2, r);
+  return {
+    d: `M ${start.x},${start.y} C ${c1.x},${c1.y} ${c2.x},${c2.y} ${end.x},${end.y}`,
+    labelPos: {
+      x: node.x + Math.cos(angle) * (LOOP_RADIUS + LABEL_MARGIN),
+      y: node.y + Math.sin(angle) * (LOOP_RADIUS + LABEL_MARGIN),
+    },
+  };
+}
+
+// Moves `point` toward `target` by distance `dist` — used to pull a path's
+// endpoint off a node's centre and onto its boundary along its tangent.
+function trimTowards(point, target, dist) {
+  const dx = target.x - point.x;
+  const dy = target.y - point.y;
+  const length = Math.hypot(dx, dy) || 1;
+  return { x: point.x + (dx / length) * dist, y: point.y + (dy / length) * dist };
+}
+
+const SUBSCRIPT_DIGITS = '₀₁₂₃₄₅₆₇₈₉';
+
+// Renders a MomentumExpr's symbols (e.g. "p_{1}") with proper subscripts
+// (e.g. "p₁") for the lightweight SVG <text> labels on the canvas — full
+// KaTeX is reserved for the output panel's HTML cards.
+function formatMomentumExpr(expr) {
+  if (!expr || expr.terms.length === 0) return '';
+  return expr.terms
+    .map(({ sign, symbol }) => ({
+      sign,
+      rendered: symbol.replace(/_\{(\d+)\}/, (_, digits) =>
+        [...digits].map(d => SUBSCRIPT_DIGITS[+d]).join('')
+      ),
+    }))
+    .map(({ sign, rendered }, i) => {
+      if (i === 0) return sign < 0 ? `-${rendered}` : rendered;
+      return sign < 0 ? ` − ${rendered}` : ` + ${rendered}`;
+    })
+    .join('');
 }
 
 function renderNodes() {

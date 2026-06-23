@@ -3,7 +3,7 @@
 // (or open in a browser via a test runner if preferred)
 
 import {
-  createGraph, addNode, addEdge, removeNode, removeEdge,
+  createGraph, addNode, addEdge, removeNode, removeEdge, flipEdge,
   getNeighbours, countLegs, internalEdges, externalEdges, countLoops,
 } from '../src/graph.js';
 
@@ -122,6 +122,20 @@ function assertEqual(label, actual, expected) {
 
   assertEqual('1 internal edge', internalEdges(g).length, 1);
   assertEqual('4 external edges', externalEdges(g).length, 4);
+}
+
+// ── flipEdge ─────────────────────────────────────────────────────────
+{
+  console.log('flipEdge');
+  let g = createGraph();
+  g = addNode(g, 'vertex', 0, 0);
+  g = addNode(g, 'vertex', 10, 0);
+  const [a, b] = g.nodes;
+  g = addEdge(g, a.id, b.id);
+  const eid = g.edges[0].id;
+  g = flipEdge(g, eid);
+  assertEqual('endpoints swapped', g.edges[0], { id: eid, from: b.id, to: a.id });
+  assert('edge count unchanged', g.edges.length === 1);
 }
 
 // ── countLoops ───────────────────────────────────────────────────────

@@ -181,6 +181,15 @@ body {
   stroke-width: 3;
 }
 
+.edge-momentum-label {
+  fill: var(--colour-muted);
+  font-size: 11px;
+  text-anchor: middle;
+  dominant-baseline: central;
+  pointer-events: none;
+  user-select: none;
+}
+
 /* ── Output panel ───────────────────────────────────────────────────── */
 .output-panel {
   background: var(--colour-surface);
