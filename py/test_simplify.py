@@ -2,7 +2,9 @@
 # the JS tests in test/*.test.js. Requires SymPy locally: pip install sympy
 # Run with: python py/test_simplify.py
 
-from simplify import simplify_amplitude
+import json
+
+from simplify import simplify_amplitude, simplify_amplitude_json
 
 passed = 0
 failed = 0
@@ -59,6 +61,18 @@ assert_equal(
         {"terms": [term(1, "k_{2}")]},
     ], 6),
     r"\frac{i \lambda^{2}}{6\left(\left(k_{1} + k_{2} + p_{2}\right)^{2} - m^{2}\right)\left(k_{1}^{2} - m^{2}\right)\left(k_{2}^{2} - m^{2}\right)}",
+)
+
+# JSON entry point used by src/sympy-bridge.js -- same tadpole case, through
+# the actual JSON-string boundary the JS side will call.
+assert_equal(
+    "tadpole via simplify_amplitude_json",
+    simplify_amplitude_json(json.dumps({
+        "vertexCount": 1,
+        "propagators": [{"terms": [term(1, "k_{1}")]}],
+        "symmetryFactor": 2,
+    })),
+    r"\frac{\lambda}{2\left(k_{1}^{2} - m^{2}\right)}",
 )
 
 print(f"\n{passed} passed, {failed} failed")

@@ -1,3 +1,5 @@
+import json
+
 import sympy as sp
 
 _I = sp.I
@@ -37,6 +39,19 @@ def simplify_amplitude(vertex_count, propagators, symmetry_factor):
     if not denominator_latex:
         return numerator_latex
     return rf'\frac{{{numerator_latex}}}{{{denominator_latex}}}'
+
+
+def simplify_amplitude_json(payload_json):
+    """JSON-string entry point for src/sympy-bridge.js. payload_json must
+    parse to {"vertexCount": int, "propagators": [...], "symmetryFactor":
+    int}. Routing the call through a JSON string keeps the JS<->Python
+    boundary to a single primitive value in each direction, avoiding
+    Pyodide's JS-array/object proxy-conversion edge cases.
+    """
+    payload = json.loads(payload_json)
+    return simplify_amplitude(
+        payload['vertexCount'], payload['propagators'], payload['symmetryFactor']
+    )
 
 
 def _propagator_denominator_latex(prop):

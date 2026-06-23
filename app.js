@@ -1,10 +1,10 @@
-import { createGraph, loadFromJSON } from './src/graph.js';
+import { createGraph, loadFromJSON, addNode, addEdge } from './src/graph.js';
 import { initCanvas, updateGraph, setTheory as setCanvasTheory } from './src/canvas.js';
 import { analyseGraph, buildContributions } from './src/rules.js';
 import { computeSymmetryFactor } from './src/symmetry.js';
 import { renderOutput } from './src/output.js';
 import { THEORIES, DEFAULT_THEORY_ID } from './src/constants.js';
-import { getPyodide } from './src/sympy-bridge.js';
+import { simplifyAmplitude } from './src/sympy-bridge.js';
 
 let graph = createGraph();
 let theory = THEORIES[DEFAULT_THEORY_ID];
@@ -72,12 +72,23 @@ document.getElementById('example-select').addEventListener('change', async e => 
   }
 });
 
-// ── Temporary Step 1 smoke test for src/sympy-bridge.js ───────────────
-// Proves Pyodide + SymPy actually load over the CDN. Remove once Step 4
-// wires real amplitude simplification into the output panel.
-getPyodide()
-  .then(pyodide => {
-    const sympyVersion = pyodide.runPython('import sympy; sympy.__version__');
-    console.log(`[sympy-bridge] Pyodide + SymPy ${sympyVersion} ready.`);
-  })
-  .catch(err => console.error('[sympy-bridge] failed to load:', err));
+// ── Temporary Step 3 smoke test for src/sympy-bridge.js ────────────────
+// Builds the tadpole diagram in memory (without touching the visible graph
+// or canvas) and runs it through the full routeMomenta -> JSON -> Python ->
+// sympy.latex pipeline, so the result can be checked against the known-good
+// value already verified in py/test_simplify.py: \frac{\lambda}{2\left(k_{1}^{2} - m^{2}\right)}
+// Remove once Step 4 wires real simplification into the output panel.
+{
+  let tadpole = createGraph();
+  tadpole = addNode(tadpole, 'vertex', 0, 0);
+  tadpole = addNode(tadpole, 'external', -10, 0);
+  tadpole = addNode(tadpole, 'external', 10, 0);
+  const [vertex, ext1, ext2] = tadpole.nodes;
+  tadpole = addEdge(tadpole, ext1.id, vertex.id);
+  tadpole = addEdge(tadpole, ext2.id, vertex.id);
+  tadpole = addEdge(tadpole, vertex.id, vertex.id);
+
+  simplifyAmplitude(tadpole, 2)
+    .then(latex => console.log('[sympy-bridge] tadpole simplified amplitude:', latex))
+    .catch(err => console.error('[sympy-bridge] failed to load/simplify:', err));
+}
