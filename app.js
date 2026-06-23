@@ -4,6 +4,7 @@ import { analyseGraph, buildContributions } from './src/rules.js';
 import { computeSymmetryFactor } from './src/symmetry.js';
 import { renderOutput } from './src/output.js';
 import { THEORIES, DEFAULT_THEORY_ID } from './src/constants.js';
+import { getPyodide } from './src/sympy-bridge.js';
 
 let graph = createGraph();
 let theory = THEORIES[DEFAULT_THEORY_ID];
@@ -70,3 +71,13 @@ document.getElementById('example-select').addEventListener('change', async e => 
     console.error('Failed to load example:', err);
   }
 });
+
+// ── Temporary Step 1 smoke test for src/sympy-bridge.js ───────────────
+// Proves Pyodide + SymPy actually load over the CDN. Remove once Step 4
+// wires real amplitude simplification into the output panel.
+getPyodide()
+  .then(pyodide => {
+    const sympyVersion = pyodide.runPython('import sympy; sympy.__version__');
+    console.log(`[sympy-bridge] Pyodide + SymPy ${sympyVersion} ready.`);
+  })
+  .catch(err => console.error('[sympy-bridge] failed to load:', err));
