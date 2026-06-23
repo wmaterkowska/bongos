@@ -54,8 +54,9 @@
       </ol>
     </aside>
 
-    <!-- Centre: SVG canvas -->
+    <!-- Centre: SVG canvas + simplified amplitude -->
     <section class="canvas-section" aria-label="Diagram canvas">
+      <div id="example-label" class="example-label">Custom diagram</div>
       <svg id="canvas" class="canvas-svg">
         <defs>
           <marker id="arrowhead" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
@@ -65,6 +66,12 @@
         <g id="edges-layer"></g>
         <g id="nodes-layer"></g>
       </svg>
+      <div class="simplified-panel" aria-label="Simplified amplitude">
+        <h2 class="simplified-heading">Simplified amplitude (SymPy)</h2>
+        <div id="simplified-body" class="simplified-body">
+          <p class="simplified-placeholder">Add vertices and connect them to see the simplified amplitude here.</p>
+        </div>
+      </div>
     </section>
 
     <!-- Right: step-by-step output -->

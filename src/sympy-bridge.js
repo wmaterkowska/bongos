@@ -8,6 +8,14 @@ import { internalEdges } from './graph.js';
 import { routeMomenta } from './momentum.js';
 
 let _pyodidePromise = null;
+let _ready = false;
+
+// Whether the runtime has already finished loading — lets the UI show a
+// one-time "loading symbolic engine…" message instead of "simplifying…"
+// for the slow first call.
+export function isPyodideReady() {
+  return _ready;
+}
 
 function getPyodide() {
   if (!_pyodidePromise) {
@@ -15,6 +23,7 @@ function getPyodide() {
       await pyodide.loadPackage('sympy');
       const source = await fetch('py/simplify.py').then(res => res.text());
       pyodide.runPython(source);
+      _ready = true;
       return pyodide;
     });
   }

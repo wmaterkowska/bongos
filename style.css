@@ -1,21 +1,27 @@
 /* ── CSS variables ──────────────────────────────────────────────────── */
 :root {
-  --colour-vertex:   #7c3aed;
+  --colour-vertex: #7c3aed;
   --colour-external: #059669;
-  --colour-edge:     #64748b;
-  --colour-warning:  #d97706;
-  --colour-bg:       #0f172a;
-  --colour-surface:  #1e293b;
-  --colour-border:   #334155;
-  --colour-text:     #e2e8f0;
-  --colour-muted:    #94a3b8;
-  --toolbar-h:       3rem;
-  --palette-w:       180px;
-  --output-w:        320px;
+  --colour-edge: #64748b;
+  --colour-warning: #d97706;
+  --colour-bg: #0f172a;
+  --colour-surface: #1e293b;
+  --colour-border: #334155;
+  --colour-text: #e2e8f0;
+  --colour-muted: #94a3b8;
+  --toolbar-h: 3rem;
+  --palette-w: 240px;
+  --output-w: 320px;
 }
 
 /* ── Reset ──────────────────────────────────────────────────────────── */
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
 
 body {
   font-family: system-ui, sans-serif;
@@ -125,12 +131,64 @@ body {
   position: relative;
   overflow: hidden;
   background: var(--colour-bg);
+  display: flex;
+  flex-direction: column;
+}
+
+.example-label {
+  flex-shrink: 0;
+  font-size: 12px;
+  color: var(--colour-muted);
+  background: var(--colour-surface);
+  border-bottom: 1px solid var(--colour-border);
+  padding: 0.4rem 1rem;
 }
 
 .canvas-svg {
+  flex: 1;
   width: 100%;
-  height: 100%;
+  min-height: 0;
   display: block;
+}
+
+/* ── Simplified amplitude (bottom of the canvas) ───────────────────── */
+.simplified-panel {
+  flex-shrink: 0;
+  max-height: 38%;
+  min-height: 28%;
+  overflow-y: auto;
+  border-top: 1px solid var(--colour-border);
+  background: var(--colour-surface);
+  padding: 0.6rem 1rem;
+}
+
+.simplified-heading {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--colour-muted);
+  margin-bottom: 0.4rem;
+}
+
+.simplified-formula {
+  overflow-x: auto;
+  padding: 0.25rem 0;
+}
+
+.simplified-placeholder,
+.simplified-loading {
+  color: var(--colour-muted);
+  font-size: 12px;
+}
+
+.simplified-loading {
+  font-style: italic;
+}
+
+.simplified-note {
+  color: var(--colour-warning);
+  font-size: 12px;
+  line-height: 1.5;
 }
 
 /* Node styles (applied via JS as SVG classes) */
@@ -154,7 +212,8 @@ body {
   fill: none;
   stroke: var(--colour-external);
   stroke-width: 2.5;
-  pointer-events: all; /* fill:none would otherwise only hit-test the ring itself */
+  pointer-events: all;
+  /* fill:none would otherwise only hit-test the ring itself */
 }
 
 .node-external.selected circle {

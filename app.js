@@ -1,13 +1,15 @@
-import { createGraph, loadFromJSON, addNode, addEdge } from './src/graph.js';
+import { createGraph, loadFromJSON } from './src/graph.js';
 import { initCanvas, updateGraph, setTheory as setCanvasTheory } from './src/canvas.js';
 import { analyseGraph, buildContributions } from './src/rules.js';
 import { computeSymmetryFactor } from './src/symmetry.js';
 import { renderOutput } from './src/output.js';
 import { THEORIES, DEFAULT_THEORY_ID } from './src/constants.js';
-import { simplifyAmplitude } from './src/sympy-bridge.js';
+import { simplifyAmplitude, isPyodideReady } from './src/sympy-bridge.js';
+import * as simplifiedPanel from './src/simplified-panel.js';
 
 let graph = createGraph();
 let theory = THEORIES[DEFAULT_THEORY_ID];
+let amplitudeGeneration = 0;
 
 function onGraphChange(newGraph) {
   graph = newGraph;
@@ -17,6 +19,35 @@ function onGraphChange(newGraph) {
     ? buildContributions(analysis, symFactor, theory)
     : [];
   renderOutput(contributions, analysis.warnings);
+  updateSimplifiedPanel(graph, symFactor);
+}
+
+// Each call gets its own generation number; if the graph changes again
+// before this one's simplification resolves, the stale result is dropped
+// instead of overwriting whatever the newer call already rendered.
+function updateSimplifiedPanel(currentGraph, symFactor) {
+  const generation = ++amplitudeGeneration;
+
+  if (currentGraph.nodes.length === 0) {
+    simplifiedPanel.renderPlaceholder();
+    return;
+  }
+
+  simplifiedPanel.renderLoading(!isPyodideReady());
+  simplifyAmplitude(currentGraph, symFactor)
+    .then(latex => {
+      if (generation !== amplitudeGeneration) return;
+      simplifiedPanel.renderResult(latex);
+    })
+    .catch(err => {
+      if (generation !== amplitudeGeneration) return;
+      console.error('Symbolic simplification unavailable:', err);
+      simplifiedPanel.renderUnavailable();
+    });
+}
+
+function setExampleLabel(name) {
+  document.getElementById('example-label').textContent = name ? `Example: ${name}` : 'Custom diagram';
 }
 
 function updateTheoryChrome() {
@@ -52,6 +83,7 @@ document.getElementById('btn-clear').addEventListener('click', () => {
   graph = createGraph();
   updateGraph(graph);
   onGraphChange(graph);
+  setExampleLabel(null);
 });
 
 // ── Toolbar: load example ─────────────────────────────────────────────
@@ -67,28 +99,8 @@ document.getElementById('example-select').addEventListener('change', async e => 
     graph = loadFromJSON(json);
     updateGraph(graph);
     onGraphChange(graph);
+    setExampleLabel(json.name);
   } catch (err) {
     console.error('Failed to load example:', err);
   }
 });
-
-// ── Temporary Step 3 smoke test for src/sympy-bridge.js ────────────────
-// Builds the tadpole diagram in memory (without touching the visible graph
-// or canvas) and runs it through the full routeMomenta -> JSON -> Python ->
-// sympy.latex pipeline, so the result can be checked against the known-good
-// value already verified in py/test_simplify.py: \frac{\lambda}{2\left(k_{1}^{2} - m^{2}\right)}
-// Remove once Step 4 wires real simplification into the output panel.
-{
-  let tadpole = createGraph();
-  tadpole = addNode(tadpole, 'vertex', 0, 0);
-  tadpole = addNode(tadpole, 'external', -10, 0);
-  tadpole = addNode(tadpole, 'external', 10, 0);
-  const [vertex, ext1, ext2] = tadpole.nodes;
-  tadpole = addEdge(tadpole, ext1.id, vertex.id);
-  tadpole = addEdge(tadpole, ext2.id, vertex.id);
-  tadpole = addEdge(tadpole, vertex.id, vertex.id);
-
-  simplifyAmplitude(tadpole, 2)
-    .then(latex => console.log('[sympy-bridge] tadpole simplified amplitude:', latex))
-    .catch(err => console.error('[sympy-bridge] failed to load/simplify:', err));
-}
