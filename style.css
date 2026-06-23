@@ -154,6 +154,7 @@ body {
   fill: none;
   stroke: var(--colour-external);
   stroke-width: 2.5;
+  pointer-events: all; /* fill:none would otherwise only hit-test the ring itself */
 }
 
 .node-external.selected circle {
@@ -179,6 +180,15 @@ body {
 .edge-line:hover {
   stroke: var(--colour-muted);
   stroke-width: 3;
+}
+
+.edge-momentum-label {
+  fill: var(--colour-muted);
+  font-size: 11px;
+  text-anchor: middle;
+  dominant-baseline: central;
+  pointer-events: none;
+  user-select: none;
 }
 
 /* ── Output panel ───────────────────────────────────────────────────── */

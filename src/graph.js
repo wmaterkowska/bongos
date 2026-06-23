@@ -38,6 +38,17 @@ export function removeEdge(graph, id) {
   };
 }
 
+// Swaps an edge's endpoints, reversing the direction momentum is routed
+// through it (see src/momentum.js, which treats from -> to as the flow
+// direction). Every other consumer of edges (rules.js, automorphism.js) is
+// direction-agnostic, so this is the only place "direction" means anything.
+export function flipEdge(graph, id) {
+  return {
+    ...graph,
+    edges: graph.edges.map(e => (e.id === id ? { ...e, from: e.to, to: e.from } : e)),
+  };
+}
+
 export function updateNodePosition(graph, id, x, y) {
   return {
     ...graph,
