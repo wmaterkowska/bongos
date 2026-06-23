@@ -1,8 +1,10 @@
 /* ── CSS variables ──────────────────────────────────────────────────── */
 :root {
-  --colour-vertex: #7c3aed;
-  --colour-external: #059669;
-  --colour-edge: #64748b;
+  /* Soft, chalk-plausible tones -- shared between the palette previews and
+     the canvas itself, since they're the same elements in both places. */
+  --colour-vertex: #c9a6f2;
+  --colour-external: #9fe6c0;
+  --colour-edge: #eef1e6;
   --colour-warning: #d97706;
   --colour-bg: #0f172a;
   --colour-surface: #1e293b;
@@ -12,6 +14,13 @@
   --toolbar-h: 3rem;
   --palette-w: 240px;
   --output-w: 320px;
+
+  /* Canvas-only blackboard theme -- the rest of the app (toolbar, palette,
+     output panels) keeps the dark-navy theme above. */
+  --chalk-bg: #173c2c;
+  --chalk-muted: #b9cdb8;
+  --chalk-highlight: #ffe9a8;
+  --chalk-font: 'Kalam', cursive, sans-serif;
 }
 
 /* ── Reset ──────────────────────────────────────────────────────────── */
@@ -126,22 +135,12 @@ body {
   padding-left: 1.1rem;
 }
 
-/* ── Canvas ─────────────────────────────────────────────────────────── */
+/* ── Canvas (styled like a chalkboard) ─────────────────────────────── */
 .canvas-section {
   position: relative;
   overflow: hidden;
-  background: var(--colour-bg);
   display: flex;
   flex-direction: column;
-}
-
-.example-label {
-  flex-shrink: 0;
-  font-size: 12px;
-  color: var(--colour-muted);
-  background: var(--colour-surface);
-  border-bottom: 1px solid var(--colour-border);
-  padding: 0.4rem 1rem;
 }
 
 .canvas-svg {
@@ -149,6 +148,43 @@ body {
   width: 100%;
   min-height: 0;
   display: block;
+  cursor: crosshair; /* hints "drag to select" */
+  background-color: var(--chalk-bg);
+  /* Faint dust/uneven-chalk patches -- subtle, not a literal hand-drawn effect */
+  background-image:
+    radial-gradient(circle at 18% 25%, rgba(255, 255, 255, 0.035) 0%, transparent 40%),
+    radial-gradient(circle at 78% 65%, rgba(255, 255, 255, 0.03) 0%, transparent 45%),
+    radial-gradient(circle at 50% 90%, rgba(255, 255, 255, 0.025) 0%, transparent 55%);
+}
+
+.canvas-svg.space-held {
+  cursor: grab;
+}
+
+.canvas-svg.panning {
+  cursor: grabbing;
+}
+
+.marquee-box {
+  fill: rgba(255, 233, 168, 0.12);
+  stroke: var(--chalk-highlight);
+  stroke-width: 1.5;
+  stroke-dasharray: 4 3;
+  pointer-events: none;
+}
+
+.canvas-title {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 1;
+  font-family: var(--chalk-font);
+  font-size: 20px;
+  color: var(--colour-edge);
+  opacity: 0.85;
+  padding: 0.5rem 0.75rem;
+  pointer-events: none;
+  user-select: none;
 }
 
 /* ── Simplified amplitude (bottom of the canvas) ───────────────────── */
@@ -192,6 +228,11 @@ body {
 }
 
 /* Node styles (applied via JS as SVG classes) */
+.node-vertex,
+.node-external {
+  cursor: pointer;
+}
+
 .node-vertex circle {
   fill: var(--colour-vertex);
   stroke: var(--colour-vertex);
@@ -208,6 +249,12 @@ body {
   stroke-width: 3;
 }
 
+.node-vertex.group-selected circle,
+.node-external.group-selected circle {
+  stroke: var(--chalk-highlight);
+  stroke-dasharray: 4 2;
+}
+
 .node-external circle {
   fill: none;
   stroke: var(--colour-external);
@@ -222,7 +269,8 @@ body {
 
 .node-label {
   fill: white;
-  font-size: 10px;
+  font-family: var(--chalk-font);
+  font-size: 12px;
   text-anchor: middle;
   dominant-baseline: central;
   pointer-events: none;
@@ -237,13 +285,14 @@ body {
 }
 
 .edge-line:hover {
-  stroke: var(--colour-muted);
+  stroke: var(--chalk-highlight);
   stroke-width: 3;
 }
 
 .edge-momentum-label {
-  fill: var(--colour-muted);
-  font-size: 11px;
+  fill: var(--chalk-muted);
+  font-family: var(--chalk-font);
+  font-size: 12px;
   text-anchor: middle;
   dominant-baseline: central;
   pointer-events: none;

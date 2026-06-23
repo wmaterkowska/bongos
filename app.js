@@ -47,7 +47,7 @@ function updateSimplifiedPanel(currentGraph, symFactor) {
 }
 
 function setExampleLabel(name) {
-  document.getElementById('example-label').textContent = name ? `Example: ${name}` : 'Custom diagram';
+  document.getElementById('canvas-title').textContent = name ? `Example: ${name}` : 'Custom diagram';
 }
 
 function updateTheoryChrome() {
