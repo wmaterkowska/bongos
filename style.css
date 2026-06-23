@@ -154,6 +154,7 @@ body {
   fill: none;
   stroke: var(--colour-external);
   stroke-width: 2.5;
+  pointer-events: all; /* fill:none would otherwise only hit-test the ring itself */
 }
 
 .node-external.selected circle {

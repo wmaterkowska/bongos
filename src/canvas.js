@@ -6,8 +6,8 @@ const EDGE_LAYER = document.getElementById('edges-layer');
 const NODE_LAYER = document.getElementById('nodes-layer');
 
 const PARALLEL_SPACING = 16;     // px between fanned-out lines sharing a node pair
-const LOOP_RADIUS = 26;          // how far a self-loop bulges from its vertex
-const LOOP_SPREAD = Math.PI / 7; // angular half-width of a self-loop's neck
+const LOOP_RADIUS = 80;          // how far a self-loop bulges from its vertex
+const LOOP_SPREAD = Math.PI / 6; // angular half-width of a self-loop's neck
 const LABEL_MARGIN = 14;         // extra px beyond the line/loop where its momentum label sits
 
 let _graph = null;
@@ -19,7 +19,7 @@ let _justDragged = false; // suppresses the click that follows a drag release
 
 // ── Public API ────────────────────────────────────────────────────────
 
-export function initCanvas(svgEl, graph, theory, onGraphChange) {
+export function initCanvas (svgEl, graph, theory, onGraphChange) {
   _graph = graph;
   _theory = theory;
   _onGraphChange = onGraphChange;
@@ -38,21 +38,21 @@ export function initCanvas(svgEl, graph, theory, onGraphChange) {
   render();
 }
 
-export function updateGraph(graph) {
+export function updateGraph (graph) {
   _graph = graph;
   _selectedNodeId = null;
   _dragging = null;
   render();
 }
 
-export function setTheory(theory) {
+export function setTheory (theory) {
   _theory = theory;
   render();
 }
 
 // ── Event handlers ────────────────────────────────────────────────────
 
-function onDrop(e) {
+function onDrop (e) {
   e.preventDefault();
   const type = e.dataTransfer.getData('node-type');
   if (!type) return;
@@ -65,7 +65,7 @@ function onDrop(e) {
   emit();
 }
 
-function onNodeClick(e, nodeId) {
+function onNodeClick (e, nodeId) {
   e.stopPropagation();
   if (_justDragged) {
     _justDragged = false;
@@ -83,7 +83,7 @@ function onNodeClick(e, nodeId) {
   }
 }
 
-function onBackgroundClick() {
+function onBackgroundClick () {
   _justDragged = false;
   if (_selectedNodeId !== null) {
     _selectedNodeId = null;
@@ -91,26 +91,26 @@ function onBackgroundClick() {
   }
 }
 
-function onNodeRightClick(e, nodeId) {
+function onNodeRightClick (e, nodeId) {
   e.preventDefault();
   _graph = removeNode(_graph, nodeId);
   _selectedNodeId = null;
   emit();
 }
 
-function onEdgeRightClick(e, edgeId) {
+function onEdgeRightClick (e, edgeId) {
   e.preventDefault();
   _graph = removeEdge(_graph, edgeId);
   emit();
 }
 
-function onEdgeClick(e, edgeId) {
+function onEdgeClick (e, edgeId) {
   e.stopPropagation();
   _graph = flipEdge(_graph, edgeId);
   emit();
 }
 
-function onNodeMouseDown(e, nodeId) {
+function onNodeMouseDown (e, nodeId) {
   if (e.button !== 0) return;
   e.stopPropagation();
   const node = getNode(_graph, nodeId);
@@ -124,7 +124,7 @@ function onNodeMouseDown(e, nodeId) {
   };
 }
 
-function onMouseMove(e) {
+function onMouseMove (e) {
   if (!_dragging) return;
   _dragging.moved = true;
   const rect = e.currentTarget.getBoundingClientRect();
@@ -134,7 +134,7 @@ function onMouseMove(e) {
   render();
 }
 
-function onMouseUp() {
+function onMouseUp () {
   if (_dragging && _dragging.moved) {
     _justDragged = true;
     emit();
@@ -144,12 +144,12 @@ function onMouseUp() {
 
 // ── Rendering ─────────────────────────────────────────────────────────
 
-function render() {
+function render () {
   renderEdges();
   renderNodes();
 }
 
-function renderEdges() {
+function renderEdges () {
   EDGE_LAYER.innerHTML = '';
 
   // Group edges that share the same pair of nodes (or the same self-loop
@@ -170,7 +170,7 @@ function renderEdges() {
   }
 }
 
-function renderEdge(edge, index, total, momentum) {
+function renderEdge (edge, index, total, momentum) {
   const from = getNode(_graph, edge.from);
   const to = getNode(_graph, edge.to);
   if (!from || !to) return;
@@ -204,7 +204,7 @@ function renderEdge(edge, index, total, momentum) {
 // curves, e.g. 3 edges become offsets [-1, 0, 1] * PARALLEL_SPACING. Endpoints
 // are trimmed back to each node's boundary (rather than its centre) so the
 // arrowhead marker lands just outside the circle instead of underneath it.
-function parallelGeometry(from, to, index, total) {
+function parallelGeometry (from, to, index, total) {
   const offset = (index - (total - 1) / 2) * PARALLEL_SPACING;
   const rFrom = NODE_RADIUS[from.type] ?? 12;
   const rTo = NODE_RADIUS[to.type] ?? 12;
@@ -256,7 +256,7 @@ function parallelGeometry(from, to, index, total) {
 // Multiple self-loops on the same node fan out around it by angle. The loop
 // starts/ends just outside the node's boundary, not at its centre, for the
 // same arrowhead-visibility reason as parallelGeometry.
-function selfLoopGeometry(node, index, total) {
+function selfLoopGeometry (node, index, total) {
   const angle = -Math.PI / 2 + (index - (total - 1) / 2) * (Math.PI / 3);
   const r = NODE_RADIUS[node.type] ?? 12;
   const c1 = {
@@ -280,7 +280,7 @@ function selfLoopGeometry(node, index, total) {
 
 // Moves `point` toward `target` by distance `dist` — used to pull a path's
 // endpoint off a node's centre and onto its boundary along its tangent.
-function trimTowards(point, target, dist) {
+function trimTowards (point, target, dist) {
   const dx = target.x - point.x;
   const dy = target.y - point.y;
   const length = Math.hypot(dx, dy) || 1;
@@ -292,7 +292,7 @@ const SUBSCRIPT_DIGITS = '₀₁₂₃₄₅₆₇₈₉';
 // Renders a MomentumExpr's symbols (e.g. "p_{1}") with proper subscripts
 // (e.g. "p₁") for the lightweight SVG <text> labels on the canvas — full
 // KaTeX is reserved for the output panel's HTML cards.
-function formatMomentumExpr(expr) {
+function formatMomentumExpr (expr) {
   if (!expr || expr.terms.length === 0) return '';
   return expr.terms
     .map(({ sign, symbol }) => ({
@@ -308,7 +308,7 @@ function formatMomentumExpr(expr) {
     .join('');
 }
 
-function renderNodes() {
+function renderNodes () {
   NODE_LAYER.innerHTML = '';
   for (const node of _graph.nodes) {
     const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
@@ -352,7 +352,7 @@ document.querySelectorAll('.palette-item').forEach(el => {
 
 // ── Helpers ───────────────────────────────────────────────────────────
 
-function emit() {
+function emit () {
   render();
   _onGraphChange(_graph);
 }
