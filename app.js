@@ -50,6 +50,16 @@ function setExampleLabel(name) {
   document.getElementById('canvas-title').textContent = name ? `Example: ${name}` : 'Custom diagram';
 }
 
+// Passed to initCanvas as the interactive-edit callback: any direct canvas
+// edit (drag, connect, delete...) means the diagram is no longer "just" the
+// example it might have started from, so revert the title before handling
+// the change normally. Loading an example or clicking Clear call
+// onGraphChange directly instead, setting their own label afterwards.
+function onCanvasInteraction(newGraph) {
+  setExampleLabel(null);
+  onGraphChange(newGraph);
+}
+
 function updateTheoryChrome() {
   document.title = `Feynman Diagram Builder — ${theory.name}`;
   document.getElementById('vertex-factor-label').textContent = theory.coupling.displaySymbol;
@@ -76,7 +86,7 @@ theorySelect.addEventListener('change', e => {
 updateTheoryChrome();
 
 // Initialise canvas with the empty graph
-initCanvas(document.getElementById('canvas'), graph, theory, onGraphChange);
+initCanvas(document.getElementById('canvas'), graph, theory, onCanvasInteraction);
 
 // ── Toolbar: clear ────────────────────────────────────────────────────
 document.getElementById('btn-clear').addEventListener('click', () => {
