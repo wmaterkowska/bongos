@@ -1,25 +1,45 @@
 import { createGraph, loadFromJSON } from './src/graph.js';
-import { initCanvas, updateGraph, setTheory as setCanvasTheory } from './src/canvas.js';
+import { initCanvas, updateGraph, setTheory as setCanvasTheory, refresh as refreshCanvas } from './src/canvas.js';
 import { analyseGraph, buildContributions } from './src/rules.js';
 import { computeSymmetryFactor } from './src/symmetry.js';
 import { renderOutput } from './src/output.js';
 import { THEORIES, DEFAULT_THEORY_ID } from './src/constants.js';
 import { simplifyAmplitude, isPyodideReady } from './src/sympy-bridge.js';
 import * as simplifiedPanel from './src/simplified-panel.js';
+import * as quiz from './src/quiz.js';
 
 let graph = createGraph();
 let theory = THEORIES[DEFAULT_THEORY_ID];
 let amplitudeGeneration = 0;
 
-function onGraphChange(newGraph) {
-  graph = newGraph;
+function computeContributions() {
   const analysis = analyseGraph(graph, theory);
   const symFactor = computeSymmetryFactor(graph, analysis);
   const contributions = graph.nodes.length > 0
     ? buildContributions(analysis, symFactor, theory)
     : [];
-  renderOutput(contributions, analysis.warnings);
+  return { analysis, symFactor, contributions };
+}
+
+function onCardRevealed(id) {
+  if (id === 'momentum') refreshCanvas();
+}
+
+function onGraphChange(newGraph) {
+  graph = newGraph;
+  const { analysis, symFactor, contributions } = computeContributions();
+  renderOutput(contributions, analysis.warnings, onCardRevealed);
   updateSimplifiedPanel(graph, symFactor);
+}
+
+// Used only by the quiz-mode toggle: re-renders cards (cheap) and flips the
+// simplified panel's cover class on its existing content, without re-running
+// simplifyAmplitude (a Pyodide/SymPy round-trip).
+function refreshCardCovers() {
+  const { analysis, contributions } = computeContributions();
+  renderOutput(contributions, analysis.warnings, onCardRevealed);
+  simplifiedPanel.refreshCover();
+  refreshCanvas();
 }
 
 // Each call gets its own generation number; if the graph changes again
@@ -57,7 +77,10 @@ function setExampleLabel(name) {
 // onGraphChange directly instead, setting their own label afterwards.
 function onCanvasInteraction(newGraph) {
   setExampleLabel(null);
+  quiz.setExampleMode(false);
+  quiz.coverAll();
   onGraphChange(newGraph);
+  refreshCanvas();
 }
 
 function updateTheoryChrome() {
@@ -79,6 +102,7 @@ theorySelect.value = theory.id;
 theorySelect.addEventListener('change', e => {
   theory = THEORIES[e.target.value];
   updateTheoryChrome();
+  quiz.coverAll();
   setCanvasTheory(theory);
   onGraphChange(graph);
 });
@@ -90,6 +114,8 @@ initCanvas(document.getElementById('canvas'), graph, theory, onCanvasInteraction
 
 // ── Toolbar: clear ────────────────────────────────────────────────────
 document.getElementById('btn-clear').addEventListener('click', () => {
+  quiz.setExampleMode(false);
+  quiz.coverAll();
   graph = createGraph();
   updateGraph(graph);
   onGraphChange(graph);
@@ -107,10 +133,20 @@ document.getElementById('example-select').addEventListener('change', async e => 
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const json = await res.json();
     graph = loadFromJSON(json);
+    quiz.setExampleMode(true);
     updateGraph(graph);
     onGraphChange(graph);
     setExampleLabel(json.name);
   } catch (err) {
     console.error('Failed to load example:', err);
   }
+});
+
+// ── Toolbar: quiz mode ────────────────────────────────────────────────
+const quizBtn = document.getElementById('btn-quiz-mode');
+quizBtn.addEventListener('click', () => {
+  quiz.setQuizMode(!quiz.isQuizMode());
+  quizBtn.classList.toggle('active', quiz.isQuizMode());
+  quizBtn.setAttribute('aria-pressed', String(quiz.isQuizMode()));
+  refreshCardCovers();
 });

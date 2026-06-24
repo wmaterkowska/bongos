@@ -76,6 +76,12 @@ body {
   background: var(--colour-border);
 }
 
+.toolbar button.active {
+  background: var(--colour-vertex);
+  color: var(--colour-bg);
+  border-color: var(--colour-vertex);
+}
+
 /* ── Three-panel layout ─────────────────────────────────────────────── */
 .layout {
   display: grid;
@@ -227,6 +233,23 @@ body {
   line-height: 1.5;
 }
 
+.simplified-body.covered {
+  cursor: pointer;
+}
+
+.simplified-body.covered .simplified-formula {
+  filter: blur(6px);
+  user-select: none;
+}
+
+.simplified-body.covered::after {
+  content: 'Click to reveal';
+  display: block;
+  font-size: 12px;
+  color: var(--colour-muted);
+  margin-top: 0.4rem;
+}
+
 /* Node styles (applied via JS as SVG classes) */
 .node-vertex,
 .node-external {
@@ -373,4 +396,23 @@ body {
 .contrib-card.combined {
   border-color: #4f46e5;
   background: rgba(79, 70, 229, 0.08);
+}
+
+.contrib-card.covered {
+  cursor: pointer;
+}
+
+.contrib-card.covered .contrib-formula,
+.contrib-card.covered .contrib-desc {
+  filter: blur(6px);
+  user-select: none;
+}
+
+.contrib-card.covered::after {
+  content: 'Click to reveal';
+  display: block;
+  text-align: center;
+  font-size: 12px;
+  color: var(--colour-muted);
+  margin-top: 0.4rem;
 }
