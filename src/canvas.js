@@ -4,6 +4,9 @@ import { routeMomenta } from './momentum.js';
 
 const EDGE_LAYER = document.getElementById('edges-layer');
 const NODE_LAYER = document.getElementById('nodes-layer');
+const MARQUEE_LAYER = document.getElementById('marquee-layer');
+const CONTENT_LAYER = document.getElementById('content-layer');
+const SVG_EL = document.getElementById('canvas');
 
 const PARALLEL_SPACING = 16;     // px between fanned-out lines sharing a node pair
 const LOOP_RADIUS = 80;          // how far a self-loop bulges from its vertex
@@ -13,8 +16,14 @@ const LABEL_MARGIN = 14;         // extra px beyond the line/loop where its mome
 let _graph = null;
 let _theory = null;
 let _onGraphChange = null;
-let _selectedNodeId = null;
-let _dragging = null; // { nodeId, offsetX, offsetY, moved }
+let _selectedNodeId = null; // single node picked for the click-to-connect gesture
+let _selectedNodeIds = new Set(); // marquee/group selection, for moving several nodes together
+let _dragging = null; // { startX, startY, startPositions: [{id,x,y}], moved }
+let _marquee = null; // { startX, startY, x, y }, in logical (pan-adjusted) coordinates
+let _panning = null; // { lastClientX, lastClientY } while Space+drag-panning
+let _panX = 0; // CONTENT_LAYER's translate offset -- an infinite canvas, not scroll-bound
+let _panY = 0;
+let _spaceHeld = false;
 let _justDragged = false; // suppresses the click that follows a drag release
 
 // ── Public API ────────────────────────────────────────────────────────
@@ -28,12 +37,18 @@ export function initCanvas (svgEl, graph, theory, onGraphChange) {
   svgEl.addEventListener('dragover', e => e.preventDefault());
   svgEl.addEventListener('drop', onDrop);
 
-  // Drag-to-reposition
+  // Drag-to-reposition, marquee-select, and Space-drag-to-pan all start as a
+  // plain mousedown on empty canvas (node mousedown stops propagation before
+  // it gets here) and are disambiguated in onBackgroundMouseDown.
+  svgEl.addEventListener('mousedown', onBackgroundMouseDown);
   svgEl.addEventListener('mousemove', onMouseMove);
   svgEl.addEventListener('mouseup', onMouseUp);
 
   // Clicking empty canvas cancels a pending node selection
   svgEl.addEventListener('click', onBackgroundClick);
+
+  window.addEventListener('keydown', onKeyDown);
+  window.addEventListener('keyup', onKeyUp);
 
   render();
 }
@@ -41,7 +56,9 @@ export function initCanvas (svgEl, graph, theory, onGraphChange) {
 export function updateGraph (graph) {
   _graph = graph;
   _selectedNodeId = null;
+  _selectedNodeIds = new Set();
   _dragging = null;
+  setPan(0, 0); // start a freshly loaded/cleared diagram centred at the origin
   render();
 }
 
@@ -58,8 +75,8 @@ function onDrop (e) {
   if (!type) return;
 
   const rect = e.currentTarget.getBoundingClientRect();
-  const x = e.clientX - rect.left;
-  const y = e.clientY - rect.top;
+  const x = e.clientX - rect.left - _panX;
+  const y = e.clientY - rect.top - _panY;
 
   _graph = addNode(_graph, type, x, y);
   emit();
@@ -84,17 +101,74 @@ function onNodeClick (e, nodeId) {
 }
 
 function onBackgroundClick () {
-  _justDragged = false;
-  if (_selectedNodeId !== null) {
+  // A click always fires right after mouseup, even after a real drag -- this
+  // is the same phantom-click suppression onNodeClick already needed for
+  // node-dragging, just also covering the marquee's background-click case.
+  if (_justDragged) {
+    _justDragged = false;
+    return;
+  }
+  if (_selectedNodeId !== null || _selectedNodeIds.size > 0) {
     _selectedNodeId = null;
+    _selectedNodeIds = new Set();
     render();
   }
+}
+
+function onBackgroundMouseDown (e) {
+  if (e.button !== 0) return;
+  const rect = SVG_EL.getBoundingClientRect();
+
+  if (_spaceHeld) {
+    _panning = { lastClientX: e.clientX, lastClientY: e.clientY };
+    SVG_EL.classList.add('panning');
+    return;
+  }
+
+  const x = e.clientX - rect.left - _panX;
+  const y = e.clientY - rect.top - _panY;
+  _marquee = { startX: x, startY: y, x, y };
+}
+
+function setPan (x, y) {
+  _panX = x;
+  _panY = y;
+  CONTENT_LAYER.setAttribute('transform', `translate(${_panX},${_panY})`);
+}
+
+function onKeyDown (e) {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable) return;
+
+  if (e.code === 'Space') {
+    e.preventDefault(); // stop the browser's default page-scroll-on-space
+    if (!_spaceHeld) {
+      _spaceHeld = true;
+      SVG_EL.classList.add('space-held');
+    }
+  } else if (e.code === 'Escape') {
+    clearSelection();
+  }
+}
+
+function onKeyUp (e) {
+  if (e.code === 'Space') {
+    _spaceHeld = false;
+    SVG_EL.classList.remove('space-held');
+  }
+}
+
+function clearSelection () {
+  if (_selectedNodeId === null && _selectedNodeIds.size === 0) return;
+  _selectedNodeId = null;
+  _selectedNodeIds = new Set();
+  render();
 }
 
 function onNodeRightClick (e, nodeId) {
   e.preventDefault();
   _graph = removeNode(_graph, nodeId);
   _selectedNodeId = null;
+  _selectedNodeIds.delete(nodeId);
   emit();
 }
 
@@ -113,33 +187,113 @@ function onEdgeClick (e, edgeId) {
 function onNodeMouseDown (e, nodeId) {
   if (e.button !== 0) return;
   e.stopPropagation();
-  const node = getNode(_graph, nodeId);
-  const svg = document.getElementById('canvas');
-  const rect = svg.getBoundingClientRect();
+  const rect = SVG_EL.getBoundingClientRect();
+
+  // Dragging a node that's part of a multi-selection moves the whole group;
+  // otherwise it's just that one node, same as before.
+  const groupIds = _selectedNodeIds.has(nodeId) && _selectedNodeIds.size > 1
+    ? [..._selectedNodeIds]
+    : [nodeId];
+
   _dragging = {
-    nodeId,
-    offsetX: e.clientX - rect.left - node.x,
-    offsetY: e.clientY - rect.top - node.y,
+    startX: e.clientX - rect.left,
+    startY: e.clientY - rect.top,
+    startPositions: groupIds.map(id => {
+      const n = getNode(_graph, id);
+      return { id, x: n.x, y: n.y };
+    }),
     moved: false,
   };
 }
 
 function onMouseMove (e) {
+  if (_panning) {
+    const dx = e.clientX - _panning.lastClientX;
+    const dy = e.clientY - _panning.lastClientY;
+    _panning.lastClientX = e.clientX;
+    _panning.lastClientY = e.clientY;
+    setPan(_panX + dx, _panY + dy);
+    return;
+  }
+
+  if (_marquee) {
+    const rect = SVG_EL.getBoundingClientRect();
+    _marquee.x = e.clientX - rect.left - _panX;
+    _marquee.y = e.clientY - rect.top - _panY;
+    updateMarqueeSelection();
+    renderMarquee();
+    renderNodes();
+    return;
+  }
+
   if (!_dragging) return;
   _dragging.moved = true;
   const rect = e.currentTarget.getBoundingClientRect();
-  const x = e.clientX - rect.left - _dragging.offsetX;
-  const y = e.clientY - rect.top - _dragging.offsetY;
-  _graph = updateNodePosition(_graph, _dragging.nodeId, x, y);
+  const x = e.clientX - rect.left;
+  const y = e.clientY - rect.top;
+  const dx = x - _dragging.startX;
+  const dy = y - _dragging.startY;
+  let next = _graph;
+  for (const pos of _dragging.startPositions) {
+    next = updateNodePosition(next, pos.id, pos.x + dx, pos.y + dy);
+  }
+  _graph = next;
   render();
 }
 
 function onMouseUp () {
+  if (_panning) {
+    _panning = null;
+    SVG_EL.classList.remove('panning');
+    return;
+  }
+
+  if (_marquee) {
+    finishMarquee();
+    return;
+  }
+
   if (_dragging && _dragging.moved) {
     _justDragged = true;
     emit();
   }
   _dragging = null;
+}
+
+// Selects every node whose centre falls within the current marquee box.
+function updateMarqueeSelection () {
+  const minX = Math.min(_marquee.startX, _marquee.x);
+  const maxX = Math.max(_marquee.startX, _marquee.x);
+  const minY = Math.min(_marquee.startY, _marquee.y);
+  const maxY = Math.max(_marquee.startY, _marquee.y);
+  _selectedNodeIds = new Set(
+    _graph.nodes
+      .filter(n => n.x >= minX && n.x <= maxX && n.y >= minY && n.y <= maxY)
+      .map(n => n.id)
+  );
+}
+
+function finishMarquee () {
+  const dragged = Math.hypot(_marquee.x - _marquee.startX, _marquee.y - _marquee.startY) > 4;
+  if (dragged) {
+    _justDragged = true; // suppress the click that's about to follow this drag
+  } else {
+    _selectedNodeIds = new Set(); // a plain click, not a real drag -- clear instead
+  }
+  _marquee = null;
+  MARQUEE_LAYER.innerHTML = '';
+  renderNodes();
+}
+
+function renderMarquee () {
+  MARQUEE_LAYER.innerHTML = '';
+  const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+  rect.setAttribute('x', Math.min(_marquee.startX, _marquee.x));
+  rect.setAttribute('y', Math.min(_marquee.startY, _marquee.y));
+  rect.setAttribute('width', Math.abs(_marquee.x - _marquee.startX));
+  rect.setAttribute('height', Math.abs(_marquee.y - _marquee.startY));
+  rect.className.baseVal = 'marquee-box';
+  MARQUEE_LAYER.appendChild(rect);
 }
 
 // ── Rendering ─────────────────────────────────────────────────────────
@@ -316,10 +470,12 @@ function renderNodes () {
     const legs = countLegs(_graph, node.id);
     const invalid = node.type === 'vertex' && legs !== _theory.legsPerVertex && legs > 0;
     const selected = node.id === _selectedNodeId;
+    const groupSelected = _selectedNodeIds.has(node.id);
 
     g.className.baseVal = [
       `node-${node.type}`,
       selected ? 'selected' : '',
+      groupSelected ? 'group-selected' : '',
       invalid ? 'invalid' : '',
     ].filter(Boolean).join(' ');
 

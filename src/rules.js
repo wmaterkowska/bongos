@@ -1,4 +1,4 @@
-import { internalEdges, externalEdges, countLoops, countLegs } from './graph.js';
+import { internalEdges, externalEdges, countLoops, countLegs, connectedComponents } from './graph.js';
 
 export function analyseGraph(graph, theory) {
   const vertices = graph.nodes.filter(n => n.type === 'vertex');
@@ -28,6 +28,22 @@ export function analyseGraph(graph, theory) {
     if (countLegs(graph, n.id) === 0) {
       warnings.push(`Node #${n.id} (${n.type}) is not connected to anything.`);
     }
+  }
+
+  // Check for multiple disconnected pieces (distinct from a lone isolated
+  // node, already flagged above). A Feynman diagram is a single connected
+  // topology -- contributions from separate diagrams are evaluated one at a
+  // time and added together by hand, not drawn on the same canvas and
+  // computed as one diagram. (Drawing them together isn't meaningless --
+  // it's a disconnected diagram, which genuinely contributes as a *product*
+  // of its pieces in the full perturbative expansion -- it's just not the
+  // connected amplitude this tool, or most students, actually want.)
+  const piecesWithEdges = connectedComponents(graph)
+    .filter(component => component.some(id => countLegs(graph, id) > 0));
+  if (piecesWithEdges.length > 1) {
+    warnings.push(
+      `This diagram has ${piecesWithEdges.length} disconnected pieces. Feynman rules (vertex factors, propagators, symmetry factor) assume one connected diagram — evaluate each piece separately and add the results, rather than drawing them together.`
+    );
   }
 
   const valid = warnings.length === 0;

@@ -1,21 +1,36 @@
 /* ── CSS variables ──────────────────────────────────────────────────── */
 :root {
-  --colour-vertex:   #7c3aed;
-  --colour-external: #059669;
-  --colour-edge:     #64748b;
-  --colour-warning:  #d97706;
-  --colour-bg:       #0f172a;
-  --colour-surface:  #1e293b;
-  --colour-border:   #334155;
-  --colour-text:     #e2e8f0;
-  --colour-muted:    #94a3b8;
-  --toolbar-h:       3rem;
-  --palette-w:       180px;
-  --output-w:        320px;
+  /* Soft, chalk-plausible tones -- shared between the palette previews and
+     the canvas itself, since they're the same elements in both places. */
+  --colour-vertex: #c9a6f2;
+  --colour-external: #9fe6c0;
+  --colour-edge: #eef1e6;
+  --colour-warning: #d97706;
+  --colour-bg: #0f172a;
+  --colour-surface: #1e293b;
+  --colour-border: #334155;
+  --colour-text: #e2e8f0;
+  --colour-muted: #94a3b8;
+  --toolbar-h: 3rem;
+  --palette-w: 240px;
+  --output-w: 320px;
+
+  /* Canvas-only blackboard theme -- the rest of the app (toolbar, palette,
+     output panels) keeps the dark-navy theme above. */
+  --chalk-bg: #173c2c;
+  --chalk-muted: #b9cdb8;
+  --chalk-highlight: #ffe9a8;
+  --chalk-font: 'Kalam', cursive, sans-serif;
 }
 
 /* ── Reset ──────────────────────────────────────────────────────────── */
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
 
 body {
   font-family: system-ui, sans-serif;
@@ -120,20 +135,104 @@ body {
   padding-left: 1.1rem;
 }
 
-/* ── Canvas ─────────────────────────────────────────────────────────── */
+/* ── Canvas (styled like a chalkboard) ─────────────────────────────── */
 .canvas-section {
   position: relative;
   overflow: hidden;
-  background: var(--colour-bg);
+  display: flex;
+  flex-direction: column;
 }
 
 .canvas-svg {
+  flex: 1;
   width: 100%;
-  height: 100%;
+  min-height: 0;
   display: block;
+  cursor: crosshair; /* hints "drag to select" */
+  background-color: var(--chalk-bg);
+  /* Faint dust/uneven-chalk patches -- subtle, not a literal hand-drawn effect */
+  background-image:
+    radial-gradient(circle at 18% 25%, rgba(255, 255, 255, 0.035) 0%, transparent 40%),
+    radial-gradient(circle at 78% 65%, rgba(255, 255, 255, 0.03) 0%, transparent 45%),
+    radial-gradient(circle at 50% 90%, rgba(255, 255, 255, 0.025) 0%, transparent 55%);
+}
+
+.canvas-svg.space-held {
+  cursor: grab;
+}
+
+.canvas-svg.panning {
+  cursor: grabbing;
+}
+
+.marquee-box {
+  fill: rgba(255, 233, 168, 0.12);
+  stroke: var(--chalk-highlight);
+  stroke-width: 1.5;
+  stroke-dasharray: 4 3;
+  pointer-events: none;
+}
+
+.canvas-title {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 1;
+  font-family: var(--chalk-font);
+  font-size: 20px;
+  color: var(--colour-edge);
+  opacity: 0.85;
+  padding: 0.5rem 0.75rem;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* ── Simplified amplitude (bottom of the canvas) ───────────────────── */
+.simplified-panel {
+  flex-shrink: 0;
+  max-height: 38%;
+  min-height: 28%;
+  overflow-y: auto;
+  border-top: 1px solid var(--colour-border);
+  background: var(--colour-surface);
+  padding: 0.6rem 1rem;
+}
+
+.simplified-heading {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--colour-muted);
+  margin-bottom: 0.4rem;
+}
+
+.simplified-formula {
+  overflow-x: auto;
+  padding: 0.25rem 0;
+}
+
+.simplified-placeholder,
+.simplified-loading {
+  color: var(--colour-muted);
+  font-size: 12px;
+}
+
+.simplified-loading {
+  font-style: italic;
+}
+
+.simplified-note {
+  color: var(--colour-warning);
+  font-size: 12px;
+  line-height: 1.5;
 }
 
 /* Node styles (applied via JS as SVG classes) */
+.node-vertex,
+.node-external {
+  cursor: pointer;
+}
+
 .node-vertex circle {
   fill: var(--colour-vertex);
   stroke: var(--colour-vertex);
@@ -150,11 +249,18 @@ body {
   stroke-width: 3;
 }
 
+.node-vertex.group-selected circle,
+.node-external.group-selected circle {
+  stroke: var(--chalk-highlight);
+  stroke-dasharray: 4 2;
+}
+
 .node-external circle {
   fill: none;
   stroke: var(--colour-external);
   stroke-width: 2.5;
-  pointer-events: all; /* fill:none would otherwise only hit-test the ring itself */
+  pointer-events: all;
+  /* fill:none would otherwise only hit-test the ring itself */
 }
 
 .node-external.selected circle {
@@ -163,7 +269,8 @@ body {
 
 .node-label {
   fill: white;
-  font-size: 10px;
+  font-family: var(--chalk-font);
+  font-size: 12px;
   text-anchor: middle;
   dominant-baseline: central;
   pointer-events: none;
@@ -178,13 +285,14 @@ body {
 }
 
 .edge-line:hover {
-  stroke: var(--colour-muted);
+  stroke: var(--chalk-highlight);
   stroke-width: 3;
 }
 
 .edge-momentum-label {
-  fill: var(--colour-muted);
-  font-size: 11px;
+  fill: var(--chalk-muted);
+  font-family: var(--chalk-font);
+  font-size: 12px;
   text-anchor: middle;
   dominant-baseline: central;
   pointer-events: none;

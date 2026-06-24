@@ -84,12 +84,43 @@ export function externalEdges(graph) {
   return graph.edges.filter(e => externalIds.has(e.from) || externalIds.has(e.to));
 }
 
-// L = I − V + C  (C = number of connected components, 1 for a connected diagram)
+// Groups of nodes reachable from one another via edges (self-loops don't
+// connect a node to anything new, but don't break its own component either).
+export function connectedComponents(graph) {
+  const visited = new Set();
+  const components = [];
+  for (const node of graph.nodes) {
+    if (visited.has(node.id)) continue;
+    const component = [];
+    const stack = [node.id];
+    visited.add(node.id);
+    while (stack.length > 0) {
+      const current = stack.pop();
+      component.push(current);
+      for (const neighbour of getNeighbours(graph, current)) {
+        if (!visited.has(neighbour)) {
+          visited.add(neighbour);
+          stack.push(neighbour);
+        }
+      }
+    }
+    components.push(component);
+  }
+  return components;
+}
+
+// L = I − V + C, where C is the number of connected components of the
+// vertex/internal-edge subgraph (external legs don't add loops, they're
+// pendant decorations) -- C is 1 for an ordinary, connected diagram, but
+// isn't hardcoded to 1, since a diagram can have several disconnected pieces.
 export function countLoops(graph) {
-  const V = graph.nodes.filter(n => n.type === 'vertex').length;
-  const I = internalEdges(graph).length;
+  const vertices = graph.nodes.filter(n => n.type === 'vertex');
+  const V = vertices.length;
   if (V === 0) return 0;
-  return I - V + 1;
+  const internal = internalEdges(graph);
+  const I = internal.length;
+  const C = connectedComponents({ nodes: vertices, edges: internal }).length;
+  return I - V + C;
 }
 
 export function loadFromJSON(json) {
