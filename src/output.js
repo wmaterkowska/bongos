@@ -1,6 +1,8 @@
 // Renders the step-by-step Feynman factors into the right panel.
 // Depends on KaTeX being available as a global (loaded via <script> in index.html).
 
+import { isRevealed, reveal } from './quiz.js';
+
 const body = document.getElementById('output-body');
 
 function renderKaTeX(latex, el) {
@@ -11,7 +13,7 @@ function renderKaTeX(latex, el) {
   }
 }
 
-function makeCard(contrib) {
+function makeCard(contrib, onReveal) {
   const card = document.createElement('div');
   card.className = 'contrib-card' + (contrib.id === 'combined' ? ' combined' : '');
 
@@ -36,6 +38,19 @@ function makeCard(contrib) {
   desc.textContent = contrib.description;
 
   card.append(header, formula, desc);
+
+  // Quiz mode: cards are rebuilt from scratch on every renderOutput() call,
+  // so a fresh one-shot listener per card is correct -- there's no persistent
+  // card DOM that needs re-covering later without a rebuild.
+  if (!isRevealed(contrib.id)) {
+    card.classList.add('covered');
+    card.addEventListener('click', () => {
+      reveal(contrib.id);
+      card.classList.remove('covered');
+      onReveal?.(contrib.id);
+    }, { once: true });
+  }
+
   return card;
 }
 
@@ -46,7 +61,7 @@ function makeWarningCard(text) {
   return card;
 }
 
-export function renderOutput(contributions, warnings) {
+export function renderOutput(contributions, warnings, onReveal) {
   body.innerHTML = '';
 
   if (contributions.length === 0 && warnings.length === 0) {
@@ -62,7 +77,7 @@ export function renderOutput(contributions, warnings) {
   }
 
   for (const contrib of contributions) {
-    body.appendChild(makeCard(contrib));
+    body.appendChild(makeCard(contrib, onReveal));
   }
 
   // Combined amplitude card
@@ -74,6 +89,6 @@ export function renderOutput(contributions, warnings) {
       colour: '#4f46e5',
       latex: `\\mathcal{M} = ${combined}`,
       description: 'Product of all Feynman rule factors for this diagram.',
-    }));
+    }, onReveal));
   }
 }
