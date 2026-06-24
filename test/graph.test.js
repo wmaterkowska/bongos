@@ -5,6 +5,7 @@
 import {
   createGraph, addNode, addEdge, removeNode, removeEdge, flipEdge,
   getNeighbours, countLegs, internalEdges, externalEdges, countLoops,
+  connectedComponents,
 } from '../src/graph.js';
 
 let passed = 0;
@@ -138,10 +139,31 @@ function assertEqual(label, actual, expected) {
   assert('edge count unchanged', g.edges.length === 1);
 }
 
+// ── connectedComponents ──────────────────────────────────────────────
+{
+  console.log('connectedComponents');
+  let g = createGraph();
+  assertEqual('empty graph: 0 components', connectedComponents(g).length, 0);
+
+  g = addNode(g, 'vertex', 0, 0);
+  g = addNode(g, 'vertex', 10, 0);
+  assertEqual('two unconnected vertices: 2 components', connectedComponents(g).length, 2);
+
+  const [a, b] = g.nodes;
+  g = addEdge(g, a.id, b.id);
+  assertEqual('connecting them: 1 component', connectedComponents(g).length, 1);
+
+  let g2 = createGraph();
+  g2 = addNode(g2, 'vertex', 0, 0);
+  const [v] = g2.nodes;
+  g2 = addEdge(g2, v.id, v.id); // self-loop
+  assertEqual('a lone self-loop is still just 1 component', connectedComponents(g2).length, 1);
+}
+
 // ── countLoops ───────────────────────────────────────────────────────
 {
   console.log('countLoops');
-  // Two vertices, one internal edge: V=2, I=1 → L = 1 - 2 + 1 = 0
+  // Two vertices, one internal edge: V=2, I=1, C=1 → L = 1 - 2 + 1 = 0
   let g = createGraph();
   g = addNode(g, 'vertex', 0, 0);
   g = addNode(g, 'vertex', 10, 0);
@@ -149,13 +171,20 @@ function assertEqual(label, actual, expected) {
   g = addEdge(g, v0.id, v1.id);
   assertEqual('tree-level: 0 loops', countLoops(g), 0);
 
-  // Figure-8 vacuum: 1 vertex, 2 self-loops → V=1, I=2 → L = 2 - 1 + 1 = 2
+  // Figure-8 vacuum: 1 vertex, 2 self-loops → V=1, I=2, C=1 → L = 2 - 1 + 1 = 2
   let g2 = createGraph();
   g2 = addNode(g2, 'vertex', 0, 0);
   const [v] = g2.nodes;
   g2 = addEdge(g2, v.id, v.id);
   g2 = addEdge(g2, v.id, v.id);
   assertEqual('figure-8: 2 loops', countLoops(g2), 2);
+
+  // Two separate vertices, no internal edges between them: V=2, I=0, C=2 →
+  // L = 0 - 2 + 2 = 0. The old hardcoded "+1" gave a nonsensical L=-1 here.
+  let g3 = createGraph();
+  g3 = addNode(g3, 'vertex', 0, 0);
+  g3 = addNode(g3, 'vertex', 500, 0);
+  assertEqual('two disconnected vertices: 0 loops, not -1', countLoops(g3), 0);
 }
 
 // ── Summary ───────────────────────────────────────────────────────────

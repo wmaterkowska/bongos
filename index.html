@@ -6,6 +6,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Feynman Diagram Builder — φ⁴ theory</title>
   <link rel="stylesheet" href="lib/katex/katex.min.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Kalam:wght@400;700&display=swap" />
   <link rel="stylesheet" href="style.css" />
 </head>
 
@@ -48,23 +51,35 @@
         <li>Click a node, then click another to connect them.</li>
         <li>Click the same node twice to add a self-loop.</li>
         <li>Click empty canvas to cancel a selection.</li>
+        <li>Drag on empty canvas to select multiple nodes, then drag one of them to move the whole group.</li>
+        <li>Hold Space and drag to pan the canvas.</li>
         <li>Click a line to flip its momentum direction.</li>
         <li>Right-click to delete a node or edge.</li>
         <li>Each vertex needs exactly 4 legs (amber border = warning).</li>
       </ol>
     </aside>
 
-    <!-- Centre: SVG canvas -->
+    <!-- Centre: SVG canvas + simplified amplitude -->
     <section class="canvas-section" aria-label="Diagram canvas">
+      <div id="canvas-title" class="canvas-title">Custom diagram</div>
       <svg id="canvas" class="canvas-svg">
         <defs>
           <marker id="arrowhead" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
             <polygon points="0 0, 8 3, 0 6" fill="var(--colour-edge)" />
           </marker>
         </defs>
-        <g id="edges-layer"></g>
-        <g id="nodes-layer"></g>
+        <g id="content-layer">
+          <g id="edges-layer"></g>
+          <g id="nodes-layer"></g>
+          <g id="marquee-layer"></g>
+        </g>
       </svg>
+      <div class="simplified-panel" aria-label="Simplified amplitude">
+        <h2 class="simplified-heading">Simplified amplitude (SymPy)</h2>
+        <div id="simplified-body" class="simplified-body">
+          <p class="simplified-placeholder">Add vertices and connect them to see the simplified amplitude here.</p>
+        </div>
+      </div>
     </section>
 
     <!-- Right: step-by-step output -->
@@ -77,6 +92,7 @@
   </main>
 
   <script src="lib/katex/katex.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/pyodide/v314.0.0/full/pyodide.js"></script>
   <script type="module" src="app.js"></script>
 </body>
 

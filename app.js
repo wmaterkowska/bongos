@@ -4,9 +4,12 @@ import { analyseGraph, buildContributions } from './src/rules.js';
 import { computeSymmetryFactor } from './src/symmetry.js';
 import { renderOutput } from './src/output.js';
 import { THEORIES, DEFAULT_THEORY_ID } from './src/constants.js';
+import { simplifyAmplitude, isPyodideReady } from './src/sympy-bridge.js';
+import * as simplifiedPanel from './src/simplified-panel.js';
 
 let graph = createGraph();
 let theory = THEORIES[DEFAULT_THEORY_ID];
+let amplitudeGeneration = 0;
 
 function onGraphChange(newGraph) {
   graph = newGraph;
@@ -16,6 +19,45 @@ function onGraphChange(newGraph) {
     ? buildContributions(analysis, symFactor, theory)
     : [];
   renderOutput(contributions, analysis.warnings);
+  updateSimplifiedPanel(graph, symFactor);
+}
+
+// Each call gets its own generation number; if the graph changes again
+// before this one's simplification resolves, the stale result is dropped
+// instead of overwriting whatever the newer call already rendered.
+function updateSimplifiedPanel(currentGraph, symFactor) {
+  const generation = ++amplitudeGeneration;
+
+  if (currentGraph.nodes.length === 0) {
+    simplifiedPanel.renderPlaceholder();
+    return;
+  }
+
+  simplifiedPanel.renderLoading(!isPyodideReady());
+  simplifyAmplitude(currentGraph, symFactor)
+    .then(latex => {
+      if (generation !== amplitudeGeneration) return;
+      simplifiedPanel.renderResult(latex);
+    })
+    .catch(err => {
+      if (generation !== amplitudeGeneration) return;
+      console.error('Symbolic simplification unavailable:', err);
+      simplifiedPanel.renderUnavailable();
+    });
+}
+
+function setExampleLabel(name) {
+  document.getElementById('canvas-title').textContent = name ? `Example: ${name}` : 'Custom diagram';
+}
+
+// Passed to initCanvas as the interactive-edit callback: any direct canvas
+// edit (drag, connect, delete...) means the diagram is no longer "just" the
+// example it might have started from, so revert the title before handling
+// the change normally. Loading an example or clicking Clear call
+// onGraphChange directly instead, setting their own label afterwards.
+function onCanvasInteraction(newGraph) {
+  setExampleLabel(null);
+  onGraphChange(newGraph);
 }
 
 function updateTheoryChrome() {
@@ -44,13 +86,14 @@ theorySelect.addEventListener('change', e => {
 updateTheoryChrome();
 
 // Initialise canvas with the empty graph
-initCanvas(document.getElementById('canvas'), graph, theory, onGraphChange);
+initCanvas(document.getElementById('canvas'), graph, theory, onCanvasInteraction);
 
 // ── Toolbar: clear ────────────────────────────────────────────────────
 document.getElementById('btn-clear').addEventListener('click', () => {
   graph = createGraph();
   updateGraph(graph);
   onGraphChange(graph);
+  setExampleLabel(null);
 });
 
 // ── Toolbar: load example ─────────────────────────────────────────────
@@ -66,6 +109,7 @@ document.getElementById('example-select').addEventListener('change', async e => 
     graph = loadFromJSON(json);
     updateGraph(graph);
     onGraphChange(graph);
+    setExampleLabel(json.name);
   } catch (err) {
     console.error('Failed to load example:', err);
   }
