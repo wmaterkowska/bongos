@@ -1,6 +1,7 @@
 import { addNode, addEdge, removeNode, removeEdge, flipEdge, updateNodePosition, getNode, countLegs } from './graph.js';
 import { NODE_RADIUS } from './constants.js';
 import { routeMomenta } from './momentum.js';
+import { isRevealed } from './quiz.js';
 
 const EDGE_LAYER = document.getElementById('edges-layer');
 const NODE_LAYER = document.getElementById('nodes-layer');
@@ -64,6 +65,12 @@ export function updateGraph (graph) {
 
 export function setTheory (theory) {
   _theory = theory;
+  render();
+}
+
+// Forces a redraw after a quiz-state change that isn't itself a graph edit
+// (canvas has no other way to learn that quiz state changed).
+export function refresh () {
   render();
 }
 
@@ -343,7 +350,7 @@ function renderEdge (edge, index, total, momentum) {
   path.addEventListener('click', e => onEdgeClick(e, edge.id));
   EDGE_LAYER.appendChild(path);
 
-  const labelText = formatMomentumExpr(momentum);
+  const labelText = isRevealed('momentum') ? formatMomentumExpr(momentum) : '';
   if (labelText) {
     const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
     label.setAttribute('x', labelPos.x);

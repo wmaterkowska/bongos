@@ -2,10 +2,22 @@
 // only owns that panel's loading/result/fallback states — the actual SymPy
 // computation lives in src/sympy-bridge.js.
 
+import { isRevealed, reveal } from './quiz.js';
+
 const body = document.getElementById('simplified-body');
+
+// Attached once, not per-render: this panel's content is intentionally not
+// rebuilt on a quiz-mode toggle (see refreshCover() below), so a listener
+// re-created inside renderResult() wouldn't survive being re-covered later.
+body.addEventListener('click', () => {
+  if (!body.classList.contains('covered')) return;
+  reveal('simplified');
+  body.classList.remove('covered');
+});
 
 function setBody(build) {
   body.innerHTML = '';
+  body.classList.remove('covered');
   build(body);
 }
 
@@ -39,7 +51,16 @@ export function renderResult(latex) {
       formula.textContent = latex;
     }
     el.appendChild(formula);
+    el.classList.toggle('covered', !isRevealed('simplified'));
   });
+}
+
+// Used only by the quiz-mode toggle: flips the covered class on whatever is
+// already rendered, without recomputing the simplification (a Pyodide/SymPy
+// round-trip) just because the cover state changed.
+export function refreshCover() {
+  const hasFormula = !!body.querySelector('.simplified-formula');
+  body.classList.toggle('covered', hasFormula && !isRevealed('simplified'));
 }
 
 export function renderUnavailable() {
