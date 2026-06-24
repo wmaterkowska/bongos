@@ -238,7 +238,7 @@ body {
 }
 
 .simplified-body.covered .simplified-formula {
-  filter: blur(6px);
+  filter: blur(14px);
   user-select: none;
 }
 
@@ -404,7 +404,7 @@ body {
 
 .contrib-card.covered .contrib-formula,
 .contrib-card.covered .contrib-desc {
-  filter: blur(6px);
+  filter: blur(14px);
   user-select: none;
 }
 
