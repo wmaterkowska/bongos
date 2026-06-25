@@ -33,7 +33,7 @@ assert_equal(
     r"- i \lambda",
 )
 
-# bubble: V=2, S=2 -- momenta from routeMomenta(bubble.json)
+# bubble: V=2, S=2 -- momenta from routeMomenta(phi4-bubble.json)
 assert_equal(
     "bubble",
     simplify_amplitude(2, [
