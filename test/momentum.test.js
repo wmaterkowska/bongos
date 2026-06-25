@@ -12,7 +12,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 let passed = 0;
 let failed = 0;
 
-function loadExample(name) {
+function loadExample (name) {
   const json = JSON.parse(readFileSync(join(__dirname, '../examples', name), 'utf8'));
   return loadFromJSON(json);
 }
@@ -20,14 +20,14 @@ function loadExample(name) {
 // Renders a MomentumExpr as a deterministic, sorted string like
 // "-k_{1}+p_{1}+p_{2}" so two expressions can be compared regardless of
 // internal term order.
-function exprToString(expr) {
+function exprToString (expr) {
   const parts = expr.terms
     .map(t => (t.sign > 0 ? '+' : '-') + t.symbol)
     .sort();
   return parts.join('');
 }
 
-function assertRoute(label, routes, edgeId, expected) {
+function assertRoute (label, routes, edgeId, expected) {
   const expr = routes.get(edgeId);
   const actual = expr ? exprToString(expr) : undefined;
   const ok = actual === expected;
@@ -53,8 +53,8 @@ function assertRoute(label, routes, edgeId, expected) {
 // ── Bubble: one internal line is the loop momentum k_1, the other is
 //    solved by conservation to -(p_3 + p_4 + k_1) at vertex 1 ───────────
 {
-  console.log('bubble.json');
-  const graph = loadExample('bubble.json');
+  console.log('phi4-bubble.json');
+  const graph = loadExample('phi4-bubble.json');
   const routes = routeMomenta(graph);
   assertRoute('first internal line -> -k_1-p_3-p_4', routes, 2, '-k_{1}-p_{3}-p_{4}');
   assertRoute('second (parallel) internal line -> k_1', routes, 3, '+k_{1}');
