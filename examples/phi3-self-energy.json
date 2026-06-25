@@ -1,0 +1,15 @@
+{
+  "name": "Self-energy correction (1-loop)",
+  "nodes": [
+    { "id": 0, "type": "vertex",   "x": 200, "y": 220 },
+    { "id": 1, "type": "vertex",   "x": 360, "y": 220 },
+    { "id": 2, "type": "external", "x": 100, "y": 220 },
+    { "id": 3, "type": "external", "x": 460, "y": 220 }
+  ],
+  "edges": [
+    { "id": 0, "from": 2, "to": 0 },
+    { "id": 1, "from": 0, "to": 1 },
+    { "id": 2, "from": 0, "to": 1 },
+    { "id": 3, "from": 1, "to": 3 }
+  ]
+}

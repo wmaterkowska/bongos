@@ -83,9 +83,21 @@ function onCanvasInteraction(newGraph) {
   refreshCanvas();
 }
 
+function repopulateExamples(t) {
+  const select = document.getElementById('example-select');
+  while (select.options.length > 1) select.remove(1);
+  for (const ex of (t.examples ?? [])) {
+    const opt = document.createElement('option');
+    opt.value = ex.path;
+    opt.textContent = ex.label;
+    select.appendChild(opt);
+  }
+}
+
 function updateTheoryChrome() {
   document.title = `Feynman Diagram Builder — ${theory.name}`;
   document.getElementById('vertex-factor-label').textContent = theory.coupling.displaySymbol;
+  repopulateExamples(theory);
 }
 
 // ── Toolbar: theory select ───────────────────────────────────────────────
