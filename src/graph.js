@@ -14,11 +14,11 @@ export function addNode(graph, type, x, y) {
   };
 }
 
-export function addEdge(graph, fromId, toId) {
+export function addEdge(graph, fromId, toId, edgeType = 'scalar') {
   const id = graph._nextId;
   return {
     ...graph,
-    edges: [...graph.edges, { id, from: fromId, to: toId }],
+    edges: [...graph.edges, { id, from: fromId, to: toId, edgeType }],
     _nextId: graph._nextId + 1,
   };
 }
@@ -131,6 +131,29 @@ export function countLoops(graph) {
   const I = internal.length;
   const C = connectedComponents({ nodes: vertices, edges: internal }).length;
   return I - V + C;
+}
+
+// Splits internal edges into buckets by edgeType. Edges without an explicit
+// edgeType (e.g. loaded from pre-v3 JSON files) are treated as 'scalar'.
+export function internalEdgesByType(graph) {
+  const all = internalEdges(graph);
+  return {
+    scalar:  all.filter(e => (e.edgeType ?? 'scalar') === 'scalar'),
+    fermion: all.filter(e => e.edgeType === 'fermion'),
+    photon:  all.filter(e => e.edgeType === 'photon'),
+  };
+}
+
+// Leg counts on a single node broken down by connecting edge type.
+// Used by rules.js for QED vertex validation (must have 2 fermion + 1 photon).
+export function countLegsByType(graph, nodeId) {
+  const counts = { scalar: 0, fermion: 0, photon: 0 };
+  for (const e of graph.edges) {
+    const t = e.edgeType ?? 'scalar';
+    if (e.from === nodeId && e.to === nodeId) { counts[t] += 2; continue; }
+    if (e.from === nodeId || e.to === nodeId)   counts[t]++;
+  }
+  return counts;
 }
 
 export function loadFromJSON(json) {
