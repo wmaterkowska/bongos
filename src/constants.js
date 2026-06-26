@@ -28,6 +28,43 @@ export const THEORIES = {
     ],
   },
 
+  qed: {
+    id: 'qed',
+    name: 'QED',
+    vertexNodeLabel: 'e',
+    coupling: {
+      vertexFactor: '-ie\\gamma^\\mu',
+      displaySymbol: '−ieγᵘ',
+      description: 'One factor of −ieγᵘ per QED vertex.',
+    },
+    fermionPropagator: {
+      latex: '\\frac{i(\\not{p}+m)}{p^2-m^2+i\\varepsilon}',
+      description: 'One fermion propagator per internal fermion line.',
+    },
+    photonPropagator: {
+      latex: '\\frac{-ig_{\\mu\\nu}}{k^2+i\\varepsilon}',
+      description: 'One photon propagator per internal photon line.',
+    },
+    externalFermion: {
+      inLatex:     'u(p)',
+      outLatex:    '\\bar{u}(p)',
+      description: 'Incoming/outgoing electron spinors.',
+    },
+    externalPhoton: {
+      inLatex:     '\\varepsilon_{\\mu}(p)',
+      outLatex:    '\\varepsilon^*_{\\mu}(p)',
+      description: 'Incoming/outgoing photon polarisation vectors.',
+    },
+    legsPerVertex: { total: 3, byType: { fermion: 2, photon: 1 } },
+    supportsEdgeTypes: true,
+    defaultDrawEdgeType: 'fermion',
+    examples: [
+      { label: 'QED — Compton scattering (tree level)',  path: 'examples/qed-compton.json'     },
+      { label: 'QED — Vacuum polarisation (1-loop)',     path: 'examples/qed-vacuum-pol.json'  },
+      { label: 'QED — Møller scattering (t-channel)',   path: 'examples/qed-moller.json'      },
+    ],
+  },
+
   phi3: {
     id: 'phi3',
     name: 'φ³ theory',
@@ -57,6 +94,9 @@ export const THEORIES = {
 export const DEFAULT_THEORY_ID = 'phi4';
 
 export const NODE_RADIUS = {
-  vertex: 14,
-  external: 9,
+  vertex:      14,
+  'qed-vertex': 14,
+  external:     9,
+  'fermion-ext': 9,
+  'photon-ext':  9,
 };
