@@ -48,7 +48,7 @@ function refreshCardCovers() {
 function updateSimplifiedPanel(currentGraph, symFactor) {
   const generation = ++amplitudeGeneration;
 
-  if (currentGraph.nodes.length === 0) {
+  if (currentGraph.nodes.length === 0 || symFactor === null) {
     simplifiedPanel.renderPlaceholder();
     return;
   }
