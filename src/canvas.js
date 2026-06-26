@@ -1,4 +1,5 @@
-import { addNode, addEdge, removeNode, removeEdge, flipEdge, updateNodePosition, getNode, countLegs, isVertexNode } from './graph.js';
+import { addNode, addEdge, removeNode, removeEdge, flipEdge, updateNodePosition, getNode, countLegs, countLegsByType, isVertexNode } from './graph.js';
+import { wavyPathD } from './wavy.js';
 import { NODE_RADIUS } from './constants.js';
 import { routeMomenta } from './momentum.js';
 import { isRevealed } from './quiz.js';
@@ -17,6 +18,7 @@ const LABEL_MARGIN = 14;         // extra px beyond the line/loop where its mome
 let _graph = null;
 let _theory = null;
 let _onGraphChange = null;
+let _drawEdgeType = 'scalar';
 let _selectedNodeId = null; // single node picked for the click-to-connect gesture
 let _selectedNodeIds = new Set(); // marquee/group selection, for moving several nodes together
 let _dragging = null; // { startX, startY, startPositions: [{id,x,y}], moved }
@@ -74,6 +76,94 @@ export function refresh () {
   render();
 }
 
+export function setDrawEdgeType (type) {
+  _drawEdgeType = type;
+}
+
+// Rebuilds the palette from the current theory's paletteItems list.
+// Called by app.js whenever the theory changes.
+export function rebuildPalette (theory) {
+  const container = document.getElementById('palette-items');
+  container.innerHTML = '';
+
+  if (theory.supportsEdgeTypes) {
+    const heading = document.createElement('p');
+    heading.className = 'palette-heading';
+    heading.textContent = 'Edge type';
+    container.appendChild(heading);
+
+    const btnGroup = document.createElement('div');
+    btnGroup.className = 'draw-mode-palette-group';
+    const defaultType = theory.defaultDrawEdgeType ?? 'fermion';
+    _drawEdgeType = defaultType;
+
+    for (const type of ['fermion', 'photon']) {
+      const btn = document.createElement('button');
+      btn.className = 'draw-mode-palette-btn';
+      btn.dataset.edgeType = type;
+      btn.textContent = type === 'fermion' ? 'Fermion' : 'Photon';
+      btn.setAttribute('aria-pressed', String(type === defaultType));
+      if (type === defaultType) btn.classList.add('active');
+      btn.addEventListener('click', () => {
+        _drawEdgeType = type;
+        btnGroup.querySelectorAll('.draw-mode-palette-btn').forEach(b => {
+          const active = b.dataset.edgeType === type;
+          b.classList.toggle('active', active);
+          b.setAttribute('aria-pressed', String(active));
+        });
+      });
+      btnGroup.appendChild(btn);
+    }
+
+    container.appendChild(btnGroup);
+    const divider = document.createElement('hr');
+    divider.className = 'palette-divider';
+    container.appendChild(divider);
+  } else {
+    _drawEdgeType = 'scalar';
+  }
+
+  for (const item of (theory.paletteItems ?? [])) {
+    const factorText = item.factorText ?? resolveKey(theory, item.factorKey) ?? '';
+    const div = document.createElement('div');
+    div.className = 'palette-item';
+    div.draggable = true;
+    div.dataset.type = item.type;
+    div.title = 'Drag onto canvas';
+    div.innerHTML = paletteIconSVG(item.type) +
+      `<span>${item.label}<br /><small>${factorText}</small></span>`;
+    div.addEventListener('dragstart', e => {
+      e.dataTransfer.setData('node-type', item.type);
+    });
+    container.appendChild(div);
+  }
+}
+
+function resolveKey (obj, path) {
+  if (!path) return undefined;
+  return path.split('.').reduce((o, k) => o?.[k], obj);
+}
+
+function paletteIconSVG (type) {
+  const open = '<svg width="32" height="32" viewBox="0 0 32 32">';
+  const close = '</svg>';
+  switch (type) {
+    case 'vertex':
+    case 'qed-vertex':
+      return open + '<circle cx="16" cy="16" r="10" fill="var(--colour-vertex)" />' + close;
+    case 'external':
+    case 'fermion-ext':
+      return open + '<circle cx="16" cy="16" r="8" fill="none" stroke="var(--colour-external)" stroke-width="2.5" />' + close;
+    case 'photon-ext':
+      return open +
+        '<circle cx="16" cy="16" r="8" fill="none" stroke="var(--colour-photon, #0891b2)" stroke-width="2" />' +
+        '<path d="M 8,16 Q 10,12 12,16 Q 14,20 16,16 Q 18,12 20,16 Q 22,20 24,16" fill="none" stroke="var(--colour-photon, #0891b2)" stroke-width="1.5" />' +
+        close;
+    default:
+      return open + '<circle cx="16" cy="16" r="8" fill="var(--colour-vertex)" />' + close;
+  }
+}
+
 // ── Event handlers ────────────────────────────────────────────────────
 
 function onDrop (e) {
@@ -101,7 +191,7 @@ function onNodeClick (e, nodeId) {
     render();
   } else {
     // Connect the two nodes. Clicking the same node again adds a self-loop.
-    _graph = addEdge(_graph, _selectedNodeId, nodeId);
+    _graph = addEdge(_graph, _selectedNodeId, nodeId, _drawEdgeType);
     _selectedNodeId = null;
     emit();
   }
@@ -337,14 +427,21 @@ function renderEdge (edge, index, total, momentum) {
   if (!from || !to) return;
 
   const isSelfLoop = edge.from === edge.to;
-  const { d, labelPos } = isSelfLoop
+  const isPhoton = edge.edgeType === 'photon';
+  const geom = isSelfLoop
     ? selfLoopGeometry(from, index, total)
     : parallelGeometry(from, to, index, total);
 
+  // Photon propagators use a wavy path along the straight start→end segment;
+  // self-loop photons keep the Bézier shape (rare in QED but still drawable).
+  const pathD = (isPhoton && !isSelfLoop)
+    ? wavyPathD(geom.start, geom.end)
+    : geom.d;
+
   const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-  path.setAttribute('d', d);
-  path.setAttribute('marker-end', 'url(#arrowhead)');
-  path.className.baseVal = 'edge-line';
+  path.setAttribute('d', pathD);
+  if (!isPhoton) path.setAttribute('marker-end', 'url(#arrowhead)');
+  path.className.baseVal = isPhoton ? 'edge-line edge-line--photon' : 'edge-line';
 
   path.addEventListener('contextmenu', e => onEdgeRightClick(e, edge.id));
   path.addEventListener('click', e => onEdgeClick(e, edge.id));
@@ -353,8 +450,8 @@ function renderEdge (edge, index, total, momentum) {
   const labelText = isRevealed('momentum') ? formatMomentumExpr(momentum) : '';
   if (labelText) {
     const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-    label.setAttribute('x', labelPos.x);
-    label.setAttribute('y', labelPos.y);
+    label.setAttribute('x', geom.labelPos.x);
+    label.setAttribute('y', geom.labelPos.y);
     label.className.baseVal = 'edge-momentum-label';
     label.textContent = labelText;
     EDGE_LAYER.appendChild(label);
@@ -380,6 +477,7 @@ function parallelGeometry (from, to, index, total) {
     const nx = -uy, ny = ux;
     return {
       d: `M ${start.x},${start.y} L ${end.x},${end.y}`,
+      start, end,
       labelPos: {
         x: (from.x + to.x) / 2 + nx * LABEL_MARGIN,
         y: (from.y + to.y) / 2 + ny * LABEL_MARGIN,
@@ -406,6 +504,7 @@ function parallelGeometry (from, to, index, total) {
   const labelDir = Math.sign(offset);
   return {
     d: `M ${start.x},${start.y} Q ${control.x},${control.y} ${end.x},${end.y}`,
+    start, end,
     labelPos: {
       x: (from.x + to.x) / 2 + nx * (offset + labelDir * LABEL_MARGIN),
       y: (from.y + to.y) / 2 + ny * (offset + labelDir * LABEL_MARGIN),
@@ -475,7 +574,16 @@ function renderNodes () {
     const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
     const r = NODE_RADIUS[node.type] ?? 12;
     const legs = countLegs(_graph, node.id);
-    const invalid = isVertexNode(node) && legs !== _theory.legsPerVertex && legs > 0;
+    let invalid = false;
+    if (isVertexNode(node) && legs > 0) {
+      if (typeof _theory.legsPerVertex === 'number') {
+        invalid = legs !== _theory.legsPerVertex;
+      } else {
+        const byType = countLegsByType(_graph, node.id);
+        invalid = Object.entries(_theory.legsPerVertex.byType)
+          .some(([t, n]) => byType[t] !== n);
+      }
+    }
     const selected = node.id === _selectedNodeId;
     const groupSelected = _selectedNodeIds.has(node.id);
 
@@ -493,9 +601,16 @@ function renderNodes () {
 
     const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
     label.className.baseVal = 'node-label';
-    label.textContent = node.type === 'vertex' ? _theory.vertexNodeLabel : '';
+    label.textContent = isVertexNode(node) ? _theory.vertexNodeLabel : '';
 
     g.append(circle, label);
+
+    if (node.type === 'photon-ext') {
+      const wave = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      wave.setAttribute('d', 'M -7,0 Q -5,-3.5 -3,0 Q -1,3.5 1,0 Q 3,-3.5 5,0 Q 7,3.5 9,0');
+      wave.className.baseVal = 'photon-node-wave';
+      g.appendChild(wave);
+    }
 
     g.addEventListener('click', e => onNodeClick(e, node.id));
     g.addEventListener('contextmenu', e => onNodeRightClick(e, node.id));
@@ -504,14 +619,6 @@ function renderNodes () {
     NODE_LAYER.appendChild(g);
   }
 }
-
-// ── Palette drag init ─────────────────────────────────────────────────
-
-document.querySelectorAll('.palette-item').forEach(el => {
-  el.addEventListener('dragstart', e => {
-    e.dataTransfer.setData('node-type', el.dataset.type);
-  });
-});
 
 // ── Helpers ───────────────────────────────────────────────────────────
 

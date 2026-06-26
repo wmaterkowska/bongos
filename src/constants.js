@@ -20,6 +20,11 @@ export const THEORIES = {
     },
     legsPerVertex: 4,
     supportsEdgeTypes: false,
+    validationHint: 'Each vertex needs exactly 4 legs (amber border = warning).',
+    paletteItems: [
+      { type: 'vertex',   label: 'Vertex',       factorKey: 'coupling.displaySymbol' },
+      { type: 'external', label: 'External leg',  factorText: 'factor 1'             },
+    ],
     examples: [
       { label: 'φ⁴ — 2→2 scattering (tree level)', path: 'examples/phi4-tree-2to2.json' },
       { label: 'φ⁴ — Bubble correction to 2→2 (1-loop)', path: 'examples/phi4-bubble.json' },
@@ -58,6 +63,12 @@ export const THEORIES = {
     legsPerVertex: { total: 3, byType: { fermion: 2, photon: 1 } },
     supportsEdgeTypes: true,
     defaultDrawEdgeType: 'fermion',
+    validationHint: 'Each QED vertex needs exactly 2 fermion legs + 1 photon leg (amber = wrong).',
+    paletteItems: [
+      { type: 'qed-vertex',  label: 'QED vertex',       factorKey: 'coupling.displaySymbol' },
+      { type: 'fermion-ext', label: 'External fermion',  factorText: 'u(p) / ū(p)'           },
+      { type: 'photon-ext',  label: 'External photon',   factorText: 'ε_μ(p)'                },
+    ],
     examples: [
       { label: 'QED — Compton scattering (tree level)',  path: 'examples/qed-compton.json'     },
       { label: 'QED — Vacuum polarisation (1-loop)',     path: 'examples/qed-vacuum-pol.json'  },
@@ -84,6 +95,11 @@ export const THEORIES = {
     },
     legsPerVertex: 3,
     supportsEdgeTypes: false,
+    validationHint: 'Each vertex needs exactly 3 legs (amber border = warning).',
+    paletteItems: [
+      { type: 'vertex',   label: 'Vertex',       factorKey: 'coupling.displaySymbol' },
+      { type: 'external', label: 'External leg',  factorText: 'factor 1'             },
+    ],
     examples: [
       { label: 'φ³ — 2→2 scattering (tree level, s-channel)', path: 'examples/phi3-tree-2to2.json' },
       { label: 'φ³ — Self-energy (1-loop)', path: 'examples/phi3-self-energy.json' },
