@@ -54,7 +54,7 @@ function updateSimplifiedPanel(currentGraph, symFactor) {
   }
 
   simplifiedPanel.renderLoading(!isPyodideReady());
-  simplifyAmplitude(currentGraph, symFactor)
+  simplifyAmplitude(currentGraph, symFactor, theory)
     .then(latex => {
       if (generation !== amplitudeGeneration) return;
       simplifiedPanel.renderResult(latex);
