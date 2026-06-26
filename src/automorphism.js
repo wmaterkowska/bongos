@@ -14,10 +14,10 @@
 //     2 self-loops at one vertex → 2! * 2^2 = 8).
 // Summing this count over every structure-preserving ρ gives S.
 
-import { internalEdges, externalEdges } from './graph.js';
+import { internalEdges, externalEdges, isVertexNode } from './graph.js';
 
 export function computeAutomorphismCount(graph) {
-  const vertices = graph.nodes.filter(n => n.type === 'vertex').map(n => n.id);
+  const vertices = graph.nodes.filter(isVertexNode).map(n => n.id);
   if (vertices.length === 0) return 1;
 
   const internal = internalEdges(graph);

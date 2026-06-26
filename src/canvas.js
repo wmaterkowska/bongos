@@ -1,4 +1,4 @@
-import { addNode, addEdge, removeNode, removeEdge, flipEdge, updateNodePosition, getNode, countLegs } from './graph.js';
+import { addNode, addEdge, removeNode, removeEdge, flipEdge, updateNodePosition, getNode, countLegs, isVertexNode } from './graph.js';
 import { NODE_RADIUS } from './constants.js';
 import { routeMomenta } from './momentum.js';
 import { isRevealed } from './quiz.js';
@@ -475,7 +475,7 @@ function renderNodes () {
     const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
     const r = NODE_RADIUS[node.type] ?? 12;
     const legs = countLegs(_graph, node.id);
-    const invalid = node.type === 'vertex' && legs !== _theory.legsPerVertex && legs > 0;
+    const invalid = isVertexNode(node) && legs !== _theory.legsPerVertex && legs > 0;
     const selected = node.id === _selectedNodeId;
     const groupSelected = _selectedNodeIds.has(node.id);
 

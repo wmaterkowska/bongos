@@ -74,13 +74,23 @@ export function countLegs(graph, nodeId) {
   }, 0);
 }
 
+// Role predicates — use these instead of comparing n.type directly so that
+// QED node types ('qed-vertex', 'fermion-ext', 'photon-ext') are handled
+// transparently by all graph-topology code without touching every call site.
+export function isVertexNode(n) {
+  return n.type === 'vertex' || n.type === 'qed-vertex';
+}
+export function isExternalNode(n) {
+  return n.type === 'external' || n.type === 'fermion-ext' || n.type === 'photon-ext';
+}
+
 export function internalEdges(graph) {
-  const vertexIds = new Set(graph.nodes.filter(n => n.type === 'vertex').map(n => n.id));
+  const vertexIds = new Set(graph.nodes.filter(isVertexNode).map(n => n.id));
   return graph.edges.filter(e => vertexIds.has(e.from) && vertexIds.has(e.to));
 }
 
 export function externalEdges(graph) {
-  const externalIds = new Set(graph.nodes.filter(n => n.type === 'external').map(n => n.id));
+  const externalIds = new Set(graph.nodes.filter(isExternalNode).map(n => n.id));
   return graph.edges.filter(e => externalIds.has(e.from) || externalIds.has(e.to));
 }
 
@@ -114,7 +124,7 @@ export function connectedComponents(graph) {
 // pendant decorations) -- C is 1 for an ordinary, connected diagram, but
 // isn't hardcoded to 1, since a diagram can have several disconnected pieces.
 export function countLoops(graph) {
-  const vertices = graph.nodes.filter(n => n.type === 'vertex');
+  const vertices = graph.nodes.filter(isVertexNode);
   const V = vertices.length;
   if (V === 0) return 0;
   const internal = internalEdges(graph);

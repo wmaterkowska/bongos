@@ -1,7 +1,7 @@
-import { internalEdges, externalEdges, countLoops, countLegs, connectedComponents } from './graph.js';
+import { internalEdges, externalEdges, countLoops, countLegs, connectedComponents, isVertexNode } from './graph.js';
 
 export function analyseGraph(graph, theory) {
-  const vertices = graph.nodes.filter(n => n.type === 'vertex');
+  const vertices = graph.nodes.filter(isVertexNode);
   const V = vertices.length;
   const I = internalEdges(graph).length;
   const E = externalEdges(graph).length;

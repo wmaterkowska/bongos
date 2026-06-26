@@ -4,7 +4,7 @@
 // KaTeX) — this module manages the async loadPyodide()/loadPackage()
 // lifecycle and caches the result so repeated calls never reload anything.
 
-import { internalEdges } from './graph.js';
+import { internalEdges, isVertexNode } from './graph.js';
 import { routeMomenta } from './momentum.js';
 
 let _pyodidePromise = null;
@@ -37,7 +37,7 @@ function getPyodide() {
 export async function simplifyAmplitude(graph, symmetryFactor) {
   const pyodide = await getPyodide();
 
-  const vertexCount = graph.nodes.filter(n => n.type === 'vertex').length;
+  const vertexCount = graph.nodes.filter(isVertexNode).length;
   const momenta = routeMomenta(graph);
   const propagators = internalEdges(graph).map(e => momenta.get(e.id));
 
