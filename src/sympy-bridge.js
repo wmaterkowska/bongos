@@ -35,34 +35,30 @@ function getPyodide() {
 // (see simplify_amplitude_json in py/simplify.py) so there's no need to
 // reason about Pyodide's JS-array/object proxy conversions.
 export async function simplifyAmplitude(graph, symmetryFactor, theory) {
-  try {
-    const pyodide = await getPyodide();
+  const pyodide = await getPyodide();
 
-    const vertexCount = graph.nodes.filter(isVertexNode).length;
-    const momenta = routeMomenta(graph);
+  const vertexCount = graph.nodes.filter(isVertexNode).length;
+  const momenta = routeMomenta(graph);
 
-    let payload;
-    if (theory?.supportsEdgeTypes) {
-      const byType = internalEdgesByType(graph);
-      payload = JSON.stringify({
-        theory: 'qed',
-        vertexCount,
-        fermionPropagators: byType.fermion.map(e => momenta.get(e.id)).filter(Boolean),
-        photonPropagators:  byType.photon.map(e => momenta.get(e.id)).filter(Boolean),
-        symmetryFactor,
-      });
-    } else {
-      payload = JSON.stringify({
-        theory: 'scalar',
-        vertexCount,
-        propagators: internalEdges(graph).map(e => momenta.get(e.id)).filter(Boolean),
-        symmetryFactor,
-      });
-    }
-
-    const simplifyAmplitudeJson = pyodide.globals.get('simplify_amplitude_json');
-    return simplifyAmplitudeJson(payload);
-  } catch (err) {
-    return 'DBG: ' + String(err);
+  let payload;
+  if (theory?.supportsEdgeTypes) {
+    const byType = internalEdgesByType(graph);
+    payload = JSON.stringify({
+      theory: 'qed',
+      vertexCount,
+      fermionPropagators: byType.fermion.map(e => momenta.get(e.id)).filter(Boolean),
+      photonPropagators:  byType.photon.map(e => momenta.get(e.id)).filter(Boolean),
+      symmetryFactor,
+    });
+  } else {
+    payload = JSON.stringify({
+      theory: 'scalar',
+      vertexCount,
+      propagators: internalEdges(graph).map(e => momenta.get(e.id)).filter(Boolean),
+      symmetryFactor,
+    });
   }
+
+  const simplifyAmplitudeJson = pyodide.globals.get('simplify_amplitude_json');
+  return simplifyAmplitudeJson(payload);
 }
