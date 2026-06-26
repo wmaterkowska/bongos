@@ -30,13 +30,17 @@ export function computeAutomorphismCount(graph) {
   }
 
   const selfLoopCount = new Map(vertices.map(v => [v, 0]));
-  const pairEdgeCount = new Map(); // `${a}-${b}` (a<b) -> number of parallel lines
+  const pairEdgeCount = new Map(); // `${a}-${b}` (a<b) -> count, for scalar/photon (undirected)
+  const fermionPairCount = new Map(); // `${from}:${to}` -> count, for fermion (directed)
   const degree = new Map(vertices.map(v => [v, 0]));
   for (const e of internal) {
     degree.set(e.from, degree.get(e.from) + 1);
     degree.set(e.to, degree.get(e.to) + 1);
     if (e.from === e.to) {
       selfLoopCount.set(e.from, selfLoopCount.get(e.from) + 1);
+    } else if ((e.edgeType ?? 'scalar') === 'fermion') {
+      const key = `${e.from}:${e.to}`;
+      fermionPairCount.set(key, (fermionPairCount.get(key) || 0) + 1);
     } else {
       const key = pairKey(e.from, e.to);
       pairEdgeCount.set(key, (pairEdgeCount.get(key) || 0) + 1);
@@ -61,7 +65,7 @@ export function computeAutomorphismCount(graph) {
 
   let total = 0;
   for (const rho of permutationsWithinGroups(groups)) {
-    total += contributionFor(rho, vertices, selfLoopCount, pairEdgeCount);
+    total += contributionFor(rho, vertices, selfLoopCount, pairEdgeCount, fermionPairCount);
   }
   return total;
 }
@@ -78,7 +82,7 @@ function factorial(n) {
 
 // Number of half-edge-level automorphisms compatible with vertex permutation
 // rho, or 0 if rho doesn't preserve the diagram's internal-line structure.
-function contributionFor(rho, vertices, selfLoopCount, pairEdgeCount) {
+function contributionFor(rho, vertices, selfLoopCount, pairEdgeCount, fermionPairCount) {
   let factor = 1;
 
   for (const v of vertices) {
@@ -87,6 +91,7 @@ function contributionFor(rho, vertices, selfLoopCount, pairEdgeCount) {
     if (k > 0) factor *= factorial(k) * 2 ** k;
   }
 
+  // Undirected pairs (scalar / photon): existing behaviour unchanged.
   for (const v of vertices) {
     for (const w of vertices) {
       if (v >= w) continue;
@@ -96,6 +101,21 @@ function contributionFor(rho, vertices, selfLoopCount, pairEdgeCount) {
       if (m !== mImage) return 0;
       factor *= factorial(m);
     }
+  }
+
+  // Directed pairs (fermion): V0→V1 and V1→V0 are distinct propagators and
+  // are NOT interchangeable, so they each get their own directed key.
+  // Use a done-set so each pair is counted once even when ρ maps A→B and B→A.
+  const doneFermion = new Set();
+  for (const [key, m] of fermionPairCount) {
+    if (doneFermion.has(key)) continue;
+    const [a, b] = key.split(':').map(Number);
+    const imageKey = `${rho.get(a)}:${rho.get(b)}`;
+    const mImage = fermionPairCount.get(imageKey) || 0;
+    if (m !== mImage) return 0;
+    factor *= factorial(m);
+    doneFermion.add(key);
+    doneFermion.add(imageKey);
   }
 
   return factor;
