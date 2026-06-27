@@ -428,12 +428,15 @@ function renderEdge (edge, index, total, momentum) {
 
   const isSelfLoop = edge.from === edge.to;
   const isPhoton = edge.edgeType === 'photon';
+  // Photon non-self-loop edges get their own geometry so that parallel wavy
+  // lines are offset onto distinct straight-line tracks rather than sharing
+  // nearly identical endpoints (parallelGeometry only angled the trim toward
+  // a Bézier control, giving ~2 px separation — far too small vs amplitude=7).
   const geom = isSelfLoop
     ? selfLoopGeometry(from, index, total)
-    : parallelGeometry(from, to, index, total);
+    : (isPhoton ? photonLineGeometry(from, to, index, total)
+                : parallelGeometry(from, to, index, total));
 
-  // Photon propagators use a wavy path along the straight start→end segment;
-  // self-loop photons keep the Bézier shape (rare in QED but still drawable).
   const pathD = (isPhoton && !isSelfLoop)
     ? wavyPathD(geom.start, geom.end)
     : geom.d;
@@ -508,6 +511,31 @@ function parallelGeometry (from, to, index, total) {
     labelPos: {
       x: (from.x + to.x) / 2 + nx * (offset + labelDir * LABEL_MARGIN),
       y: (from.y + to.y) / 2 + ny * (offset + labelDir * LABEL_MARGIN),
+    },
+  };
+}
+
+// Returns geometry for a photon edge as a straight (non-Bézier) line offset
+// perpendicularly from the centre-line between two nodes. Each edge in a
+// parallel group lands on its own track, giving wavyPathD clearly separated
+// start/end points so the waves don't overlap.
+function photonLineGeometry(from, to, index, total) {
+  const perpOffset = (index - (total - 1) / 2) * PARALLEL_SPACING;
+  const dx = to.x - from.x, dy = to.y - from.y;
+  const len = Math.hypot(dx, dy) || 1;
+  const ux = dx / len, uy = dy / len;
+  const nx = -uy, ny = ux; // perpendicular unit vector
+  const rFrom = NODE_RADIUS[from.type] ?? 12;
+  const rTo   = NODE_RADIUS[to.type]   ?? 12;
+  const start = { x: from.x + ux * rFrom + nx * perpOffset, y: from.y + uy * rFrom + ny * perpOffset };
+  const end   = { x: to.x   - ux * rTo   + nx * perpOffset, y: to.y   - uy * rTo   + ny * perpOffset };
+  const labelSign = perpOffset === 0 ? 1 : Math.sign(perpOffset);
+  return {
+    d: `M ${start.x},${start.y} L ${end.x},${end.y}`,
+    start, end,
+    labelPos: {
+      x: (from.x + to.x) / 2 + nx * (perpOffset + labelSign * LABEL_MARGIN),
+      y: (from.y + to.y) / 2 + ny * (perpOffset + labelSign * LABEL_MARGIN),
     },
   };
 }

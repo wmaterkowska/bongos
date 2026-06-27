@@ -8,6 +8,7 @@ export function analyseGraph(graph, theory) {
   const L = countLoops(graph);
 
   let I_fermion = 0, I_photon = 0, E_fermion = 0, E_photon = 0;
+  let E_fermion_in = 0, E_fermion_out = 0, E_photon_in = 0, E_photon_out = 0;
   if (theory.supportsEdgeTypes) {
     const byType = internalEdgesByType(graph);
     I_fermion = byType.fermion.length;
@@ -15,12 +16,21 @@ export function analyseGraph(graph, theory) {
     const extNodes = graph.nodes.filter(isExternalNode);
     E_fermion = extNodes.filter(n => n.type === 'fermion-ext').length;
     E_photon  = extNodes.filter(n => n.type === 'photon-ext').length;
+    // Determine in/out from edge direction: edge from ext→vertex = incoming particle.
+    for (const n of extNodes) {
+      const edge = graph.edges.find(e => e.from === n.id || e.to === n.id);
+      if (!edge) continue;
+      const incoming = edge.from === n.id;
+      if (n.type === 'fermion-ext') { if (incoming) E_fermion_in++; else E_fermion_out++; }
+      else if (n.type === 'photon-ext') { if (incoming) E_photon_in++; else E_photon_out++; }
+    }
   }
 
   const warnings = [];
 
   if (V === 0 && graph.nodes.length === 0) {
-    return { V, E, I, I_fermion, I_photon, E_fermion, E_photon, L, valid: false, warnings };
+    return { V, E, I, I_fermion, I_photon, E_fermion, E_photon,
+             E_fermion_in, E_fermion_out, E_photon_in, E_photon_out, L, valid: false, warnings };
   }
 
   for (const v of vertices) {
@@ -60,7 +70,8 @@ export function analyseGraph(graph, theory) {
   }
 
   const valid = warnings.length === 0;
-  return { V, E, I, I_fermion, I_photon, E_fermion, E_photon, L, valid, warnings };
+  return { V, E, I, I_fermion, I_photon, E_fermion, E_photon,
+           E_fermion_in, E_fermion_out, E_photon_in, E_photon_out, L, valid, warnings };
 }
 
 export function buildContributions(analysis, symmetryFactor, theory) {
@@ -125,7 +136,8 @@ function buildScalarContributions(analysis, symmetryFactor, theory) {
 }
 
 function buildQEDContributions(analysis, symmetryFactor, theory) {
-  const { V, I_fermion, I_photon, E_fermion, E_photon, L } = analysis;
+  const { V, I_fermion, I_photon, E_fermion, E_photon,
+          E_fermion_in, E_fermion_out, E_photon_in, E_photon_out, L } = analysis;
   const contributions = [];
 
   if (V > 0) {
@@ -166,8 +178,8 @@ function buildQEDContributions(analysis, symmetryFactor, theory) {
       id: 'external-fermions',
       label: 'External fermion legs',
       colour: '#059669',
-      latex: `u(p),\\;\\bar{u}(p)`,
-      description: `${theory.externalFermion.description} You have ${E_fermion} external fermion ${E_fermion === 1 ? 'leg' : 'legs'}.`,
+      latex: externalFermionLatex(E_fermion_in, E_fermion_out, E_fermion),
+      description: `${theory.externalFermion.description} You have ${E_fermion_in} incoming (u) and ${E_fermion_out} outgoing (ū).`,
       count: E_fermion,
     });
   }
@@ -177,8 +189,8 @@ function buildQEDContributions(analysis, symmetryFactor, theory) {
       id: 'external-photons',
       label: 'External photon legs',
       colour: '#0284c7',
-      latex: `\\varepsilon_{\\mu}(p),\\;\\varepsilon^*_{\\mu}(p)`,
-      description: `${theory.externalPhoton.description} You have ${E_photon} external photon ${E_photon === 1 ? 'leg' : 'legs'}.`,
+      latex: externalPhotonLatex(E_photon_in, E_photon_out, E_photon),
+      description: `${theory.externalPhoton.description} You have ${E_photon_in} incoming (ε_μ) and ${E_photon_out} outgoing (ε*_μ).`,
       count: E_photon,
     });
   }
@@ -198,7 +210,42 @@ function buildQEDContributions(analysis, symmetryFactor, theory) {
   }
 
   appendCommonContributions(contributions, symmetryFactor);
+
+  contributions.push({
+    id: 'dirac-note',
+    label: 'Dirac algebra note',
+    colour: '#6b7280',
+    noCover: true,
+    latex: '\\not{p},\\;\\gamma^\\mu,\\;\\text{traces}',
+    description: 'Numerator factors (p̸+m) in fermion propagators and the vertex Lorentz structure (γᵘ) require Dirac algebra. This tool lists each Feynman factor; index contractions and Dirac traces are left to the student.',
+  });
+
   return contributions;
+}
+
+// Build the external-leg LaTeX listing incoming factors before outgoing ones,
+// numbered p_1, p_2, ... in that order. Falls back to a combined total if
+// no in/out information is available (inCount + outCount < total).
+function externalFermionLatex(inCount, outCount, total) {
+  if (inCount + outCount < total) {
+    return `u(p),\\;\\bar{u}(p)`;
+  }
+  let idx = 1;
+  const parts = [];
+  for (let i = 0; i < inCount;  i++) parts.push(`u(p_{${idx++}})`);
+  for (let i = 0; i < outCount; i++) parts.push(`\\bar{u}(p_{${idx++}})`);
+  return parts.join('\\,') || `u(p)`;
+}
+
+function externalPhotonLatex(inCount, outCount, total) {
+  if (inCount + outCount < total) {
+    return `\\varepsilon_{\\mu}(p),\\;\\varepsilon^*_{\\mu}(p)`;
+  }
+  let idx = 1;
+  const parts = [];
+  for (let i = 0; i < inCount;  i++) parts.push(`\\varepsilon_{\\mu}(p_{${idx++}})`);
+  for (let i = 0; i < outCount; i++) parts.push(`\\varepsilon^{*}_{\\mu}(p_{${idx++}})`);
+  return parts.join('\\,') || `\\varepsilon_{\\mu}(p)`;
 }
 
 function appendCommonContributions(contributions, symmetryFactor) {
