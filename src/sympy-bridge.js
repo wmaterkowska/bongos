@@ -4,7 +4,7 @@
 // KaTeX) — this module manages the async loadPyodide()/loadPackage()
 // lifecycle and caches the result so repeated calls never reload anything.
 
-import { internalEdges } from './graph.js';
+import { internalEdges, internalEdgesByType, isVertexNode } from './graph.js';
 import { routeMomenta } from './momentum.js';
 
 let _pyodidePromise = null;
@@ -21,7 +21,7 @@ function getPyodide() {
   if (!_pyodidePromise) {
     _pyodidePromise = loadPyodide().then(async pyodide => {
       await pyodide.loadPackage('sympy');
-      const source = await fetch('py/simplify.py').then(res => res.text());
+      const source = await fetch('py/simplify.py', { cache: 'no-store' }).then(res => res.text());
       pyodide.runPython(source);
       _ready = true;
       return pyodide;
@@ -34,14 +34,31 @@ function getPyodide() {
 // its LaTeX. The JS<->Python boundary is a single JSON string each way
 // (see simplify_amplitude_json in py/simplify.py) so there's no need to
 // reason about Pyodide's JS-array/object proxy conversions.
-export async function simplifyAmplitude(graph, symmetryFactor) {
+export async function simplifyAmplitude(graph, symmetryFactor, theory) {
   const pyodide = await getPyodide();
 
-  const vertexCount = graph.nodes.filter(n => n.type === 'vertex').length;
+  const vertexCount = graph.nodes.filter(isVertexNode).length;
   const momenta = routeMomenta(graph);
-  const propagators = internalEdges(graph).map(e => momenta.get(e.id));
 
-  const payload = JSON.stringify({ vertexCount, propagators, symmetryFactor });
+  let payload;
+  if (theory?.supportsEdgeTypes) {
+    const byType = internalEdgesByType(graph);
+    payload = JSON.stringify({
+      theory: 'qed',
+      vertexCount,
+      fermionPropagators: byType.fermion.map(e => momenta.get(e.id)).filter(Boolean),
+      photonPropagators:  byType.photon.map(e => momenta.get(e.id)).filter(Boolean),
+      symmetryFactor,
+    });
+  } else {
+    payload = JSON.stringify({
+      theory: 'scalar',
+      vertexCount,
+      propagators: internalEdges(graph).map(e => momenta.get(e.id)).filter(Boolean),
+      symmetryFactor,
+    });
+  }
+
   const simplifyAmplitudeJson = pyodide.globals.get('simplify_amplitude_json');
   return simplifyAmplitudeJson(payload);
 }

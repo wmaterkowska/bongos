@@ -20,6 +20,11 @@ export const THEORIES = {
     },
     legsPerVertex: 4,
     supportsEdgeTypes: false,
+    validationHint: 'Each vertex needs exactly 4 legs (amber border = warning).',
+    paletteItems: [
+      { type: 'vertex', label: 'Vertex', factorKey: 'coupling.displaySymbol' },
+      { type: 'external', label: 'External leg', factorText: 'factor 1' },
+    ],
     examples: [
       { label: 'φ⁴ — 2→2 scattering (tree level)', path: 'examples/phi4-tree-2to2.json' },
       { label: 'φ⁴ — Bubble correction to 2→2 (1-loop)', path: 'examples/phi4-bubble.json' },
@@ -47,9 +52,57 @@ export const THEORIES = {
     },
     legsPerVertex: 3,
     supportsEdgeTypes: false,
+    validationHint: 'Each vertex needs exactly 3 legs (amber border = warning).',
+    paletteItems: [
+      { type: 'vertex', label: 'Vertex', factorKey: 'coupling.displaySymbol' },
+      { type: 'external', label: 'External leg', factorText: 'factor 1' },
+    ],
     examples: [
       { label: 'φ³ — 2→2 scattering (tree level, s-channel)', path: 'examples/phi3-tree-2to2.json' },
       { label: 'φ³ — Self-energy (1-loop)', path: 'examples/phi3-self-energy.json' },
+    ],
+  },
+
+  qed: {
+    id: 'qed',
+    name: 'QED',
+    vertexNodeLabel: 'e',
+    coupling: {
+      vertexFactor: '-ie\\gamma^\\mu',
+      displaySymbol: '−ieγᵘ',
+      description: 'One factor of −ieγᵘ per QED vertex.',
+    },
+    fermionPropagator: {
+      latex: '\\frac{i(\\not{p}+m)}{p^2-m^2+i\\varepsilon}',
+      description: 'One fermion propagator per internal fermion line.',
+    },
+    photonPropagator: {
+      latex: '\\frac{-ig_{\\mu\\nu}}{k^2+i\\varepsilon}',
+      description: 'One photon propagator per internal photon line.',
+    },
+    externalFermion: {
+      inLatex: 'u(p)',
+      outLatex: '\\bar{u}(p)',
+      description: 'Incoming/outgoing electron spinors.',
+    },
+    externalPhoton: {
+      inLatex: '\\varepsilon_{\\mu}(p)',
+      outLatex: '\\varepsilon^*_{\\mu}(p)',
+      description: 'Incoming/outgoing photon polarisation vectors.',
+    },
+    legsPerVertex: { total: 3, byType: { fermion: 2, photon: 1 } },
+    supportsEdgeTypes: true,
+    defaultDrawEdgeType: 'fermion',
+    validationHint: 'Each QED vertex needs exactly 2 fermion legs + 1 photon leg (amber = wrong).',
+    paletteItems: [
+      { type: 'qed-vertex', label: 'QED vertex', factorKey: 'coupling.displaySymbol' },
+      { type: 'fermion-ext', label: 'External fermion', factorText: 'u(p) / ū(p)' },
+      { type: 'photon-ext', label: 'External photon', factorText: 'ε_μ(p)' },
+    ],
+    examples: [
+      { label: 'QED — Compton scattering (tree level)', path: 'examples/qed-compton.json' },
+      { label: 'QED — Vacuum polarisation (1-loop)', path: 'examples/qed-vacuum-pol.json' },
+      { label: 'QED — Møller scattering (t-channel)', path: 'examples/qed-moller.json' },
     ],
   },
 };
@@ -58,5 +111,8 @@ export const DEFAULT_THEORY_ID = 'phi4';
 
 export const NODE_RADIUS = {
   vertex: 14,
+  'qed-vertex': 14,
   external: 9,
+  'fermion-ext': 9,
+  'photon-ext': 9,
 };

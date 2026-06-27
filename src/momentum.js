@@ -15,10 +15,10 @@
 // The root of each component never needs its own equation — it's the
 // redundant one, implied by the others plus overall momentum conservation.
 
-import { internalEdges } from './graph.js';
+import { internalEdges, isVertexNode, isExternalNode } from './graph.js';
 
 export function routeMomenta(graph) {
-  const vertices = graph.nodes.filter(n => n.type === 'vertex');
+  const vertices = graph.nodes.filter(isVertexNode);
   if (vertices.length === 0) return new Map();
   const vertexIds = new Set(vertices.map(v => v.id));
 
@@ -27,7 +27,7 @@ export function routeMomenta(graph) {
   // External legs: fixed momenta p_{1}, p_{2}, ... in node-creation order,
   // defined as flowing from the external node into the vertex.
   const externals = graph.nodes
-    .filter(n => n.type === 'external')
+    .filter(isExternalNode)
     .sort((a, b) => a.id - b.id);
   const externalSymbol = new Map(externals.map((n, i) => [n.id, `p_{${i + 1}}`]));
 
