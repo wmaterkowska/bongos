@@ -1,4 +1,4 @@
-import { addNode, addEdge, removeNode, removeEdge, flipEdge, updateNodePosition, getNode, countLegs, countLegsByType, isVertexNode } from './graph.js';
+import { addNode, addEdge, removeNode, removeEdge, flipEdge, updateNodePosition, getNode, countLegs, countLegsByType, isVertexNode, isExternalNode } from './graph.js';
 import { wavyPathD } from './wavy.js';
 import { NODE_RADIUS } from './constants.js';
 import { routeMomenta } from './momentum.js';
@@ -154,6 +154,11 @@ function paletteIconSVG (type) {
     case 'external':
     case 'fermion-ext':
       return open + '<circle cx="16" cy="16" r="8" fill="none" stroke="var(--colour-external)" stroke-width="2.5" />' + close;
+    case 'positron-ext':
+      return open +
+        '<circle cx="16" cy="16" r="8" fill="none" stroke="var(--colour-positron, #fb923c)" stroke-width="2.5" />' +
+        '<text x="16" y="20" font-size="11" font-weight="bold" text-anchor="middle" fill="var(--colour-positron, #fb923c)">+</text>' +
+        close;
     case 'photon-ext':
       return open +
         '<circle cx="16" cy="16" r="8" fill="none" stroke="var(--colour-photon, #0891b2)" stroke-width="2" />' +
@@ -441,10 +446,18 @@ function renderEdge (edge, index, total, momentum) {
     ? wavyPathD(geom.start, geom.end)
     : geom.d;
 
+  const isFermion = edge.edgeType === 'fermion';
   const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
   path.setAttribute('d', pathD);
-  if (!isPhoton) path.setAttribute('marker-end', 'url(#arrowhead)');
-  path.className.baseVal = isPhoton ? 'edge-line edge-line--photon' : 'edge-line';
+  if (isPhoton) {
+    path.className.baseVal = 'edge-line edge-line--photon';
+  } else if (isFermion) {
+    path.setAttribute('marker-end', 'url(#arrowhead-fermion)');
+    path.className.baseVal = 'edge-line edge-line--fermion';
+  } else {
+    path.setAttribute('marker-end', 'url(#arrowhead)');
+    path.className.baseVal = 'edge-line';
+  }
 
   path.addEventListener('contextmenu', e => onEdgeRightClick(e, edge.id));
   path.addEventListener('click', e => onEdgeClick(e, edge.id));
@@ -598,6 +611,18 @@ function formatMomentumExpr (expr) {
 
 function renderNodes () {
   NODE_LAYER.innerHTML = '';
+
+  // Pre-compute external-node → momentum-symbol map (same ordering as routeMomenta).
+  // Only rendered when momentum card is revealed.
+  const extSymbolMap = isRevealed('momentum')
+    ? new Map(
+        _graph.nodes
+          .filter(isExternalNode)
+          .sort((a, b) => a.id - b.id)
+          .map((n, i) => [n.id, `p_{${i + 1}}`])
+      )
+    : null;
+
   for (const node of _graph.nodes) {
     const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
     const r = NODE_RADIUS[node.type] ?? 12;
@@ -629,7 +654,8 @@ function renderNodes () {
 
     const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
     label.className.baseVal = 'node-label';
-    label.textContent = isVertexNode(node) ? _theory.vertexNodeLabel : '';
+    label.textContent = isVertexNode(node) ? _theory.vertexNodeLabel
+                      : node.type === 'positron-ext' ? '+' : '';
 
     g.append(circle, label);
 
@@ -645,6 +671,31 @@ function renderNodes () {
     g.addEventListener('mousedown', e => onNodeMouseDown(e, node.id));
 
     NODE_LAYER.appendChild(g);
+
+    // N7: external-leg momentum labels, shown when the momentum card is revealed.
+    if (extSymbolMap && isExternalNode(node)) {
+      const sym = extSymbolMap.get(node.id);
+      if (sym) {
+        // Offset label outward from the connected vertex (or straight up if isolated).
+        const edge = _graph.edges.find(e => e.from === node.id || e.to === node.id);
+        let ox = 0, oy = -1;
+        if (edge) {
+          const vtxId = edge.from === node.id ? edge.to : edge.from;
+          const vtx = getNode(_graph, vtxId);
+          if (vtx && isVertexNode(vtx)) {
+            const dx = node.x - vtx.x, dy = node.y - vtx.y;
+            const len = Math.hypot(dx, dy) || 1;
+            ox = dx / len; oy = dy / len;
+          }
+        }
+        const extLabel = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        extLabel.setAttribute('x', node.x + ox * (r + 14));
+        extLabel.setAttribute('y', node.y + oy * (r + 14));
+        extLabel.className.baseVal = 'ext-momentum-label';
+        extLabel.textContent = formatMomentumExpr({ terms: [{ sign: 1, symbol: sym }] });
+        NODE_LAYER.appendChild(extLabel);
+      }
+    }
   }
 }
 

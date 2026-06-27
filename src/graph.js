@@ -81,7 +81,10 @@ export function isVertexNode(n) {
   return n.type === 'vertex' || n.type === 'qed-vertex';
 }
 export function isExternalNode(n) {
-  return n.type === 'external' || n.type === 'fermion-ext' || n.type === 'photon-ext';
+  return n.type === 'external'
+      || n.type === 'fermion-ext'
+      || n.type === 'positron-ext'
+      || n.type === 'photon-ext';
 }
 
 export function internalEdges(graph) {
