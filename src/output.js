@@ -42,7 +42,7 @@ function makeCard(contrib, onReveal) {
   // Quiz mode: cards are rebuilt from scratch on every renderOutput() call,
   // so a fresh one-shot listener per card is correct -- there's no persistent
   // card DOM that needs re-covering later without a rebuild.
-  if (!isRevealed(contrib.id)) {
+  if (!contrib.noCover && !isRevealed(contrib.id)) {
     card.classList.add('covered');
     card.addEventListener('click', () => {
       reveal(contrib.id);
