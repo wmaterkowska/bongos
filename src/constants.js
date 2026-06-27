@@ -94,15 +94,23 @@ export const THEORIES = {
     supportsEdgeTypes: true,
     defaultDrawEdgeType: 'fermion',
     validationHint: 'Each QED vertex needs exactly 2 fermion legs + 1 photon leg (amber = wrong).',
+    positronExt: {
+      inLatex:     '\\bar{v}(p)',
+      outLatex:    'v(p)',
+      description: 'Incoming/outgoing positron spinors.',
+    },
     paletteItems: [
-      { type: 'qed-vertex', label: 'QED vertex', factorKey: 'coupling.displaySymbol' },
-      { type: 'fermion-ext', label: 'External fermion', factorText: 'u(p) / ū(p)' },
-      { type: 'photon-ext', label: 'External photon', factorText: 'ε_μ(p)' },
+      { type: 'qed-vertex',   label: 'QED vertex',       factorKey: 'coupling.displaySymbol' },
+      { type: 'fermion-ext',  label: 'External fermion',  factorText: 'u(p) / ū(p)' },
+      { type: 'positron-ext', label: 'External positron', factorText: 'v̄(p) / v(p)' },
+      { type: 'photon-ext',   label: 'External photon',   factorText: 'ε_μ(p)' },
     ],
     examples: [
-      { label: 'QED — Compton scattering (tree level)', path: 'examples/qed-compton.json' },
-      { label: 'QED — Vacuum polarisation (1-loop)', path: 'examples/qed-vacuum-pol.json' },
-      { label: 'QED — Møller scattering (t-channel)', path: 'examples/qed-moller.json' },
+      { label: 'QED — Compton scattering (tree level)',    path: 'examples/qed-compton.json' },
+      { label: 'QED — Vacuum polarisation (1-loop)',       path: 'examples/qed-vacuum-pol.json' },
+      { label: 'QED — Møller scattering (t-channel)',      path: 'examples/qed-moller.json' },
+      { label: 'QED — Bhabha scattering (t-channel)',      path: 'examples/qed-bhabha.json' },
+      { label: 'QED — e⁺e⁻ annihilation (s-channel)',     path: 'examples/qed-annihilation.json' },
     ],
   },
 };
@@ -114,5 +122,6 @@ export const NODE_RADIUS = {
   'qed-vertex': 14,
   external: 9,
   'fermion-ext': 9,
+  'positron-ext': 9,
   'photon-ext': 9,
 };

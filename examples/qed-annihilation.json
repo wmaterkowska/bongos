@@ -1,0 +1,18 @@
+{
+  "name": "e⁺e⁻ → γγ annihilation (s-channel)",
+  "nodes": [
+    { "id": 0, "type": "qed-vertex",   "x": 220, "y": 220 },
+    { "id": 1, "type": "qed-vertex",   "x": 380, "y": 220 },
+    { "id": 2, "type": "fermion-ext",  "x":  80, "y": 130 },
+    { "id": 3, "type": "positron-ext", "x": 520, "y": 130 },
+    { "id": 4, "type": "photon-ext",   "x":  80, "y": 310 },
+    { "id": 5, "type": "photon-ext",   "x": 520, "y": 310 }
+  ],
+  "edges": [
+    { "id": 0, "from": 2, "to": 0, "edgeType": "fermion" },
+    { "id": 1, "from": 0, "to": 1, "edgeType": "fermion" },
+    { "id": 2, "from": 1, "to": 3, "edgeType": "fermion" },
+    { "id": 3, "from": 0, "to": 4, "edgeType": "photon"  },
+    { "id": 4, "from": 1, "to": 5, "edgeType": "photon"  }
+  ]
+}
