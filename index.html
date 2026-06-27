@@ -28,18 +28,7 @@
     <!-- Left: element palette -->
     <aside class="palette" aria-label="Element palette">
       <h2 class="palette-heading">Elements</h2>
-      <div class="palette-item" draggable="true" data-type="vertex" title="Drag onto canvas">
-        <svg width="32" height="32" viewBox="0 0 32 32">
-          <circle cx="16" cy="16" r="10" fill="var(--colour-vertex)" />
-        </svg>
-        <span>Vertex<br /><small id="vertex-factor-label">−iλ</small></span>
-      </div>
-      <div class="palette-item" draggable="true" data-type="external" title="Drag onto canvas">
-        <svg width="32" height="32" viewBox="0 0 32 32">
-          <circle cx="16" cy="16" r="8" fill="none" stroke="var(--colour-external)" stroke-width="2.5" />
-        </svg>
-        <span>External leg<br /><small>factor 1</small></span>
-      </div>
+      <div id="palette-items"></div>
 
       <hr class="palette-divider" />
 
@@ -53,7 +42,7 @@
         <li>Hold Space and drag to pan the canvas.</li>
         <li>Click a line to flip its momentum direction.</li>
         <li>Right-click to delete a node or edge.</li>
-        <li>Each vertex needs exactly 4 legs (amber border = warning).</li>
+        <li id="instruction-validation">Each vertex needs exactly 4 legs (amber border = warning).</li>
         <li>Toggle Quiz mode to hide the factor cards — click each one (or the canvas momentum lines) to reveal it.</li>
       </ol>
     </aside>

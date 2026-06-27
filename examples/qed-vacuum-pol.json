@@ -1,0 +1,15 @@
+{
+  "name": "Vacuum polarisation (1-loop)",
+  "nodes": [
+    { "id": 0, "type": "qed-vertex",  "x": 200, "y": 220 },
+    { "id": 1, "type": "qed-vertex",  "x": 380, "y": 220 },
+    { "id": 2, "type": "photon-ext",  "x":  80, "y": 220 },
+    { "id": 3, "type": "photon-ext",  "x": 500, "y": 220 }
+  ],
+  "edges": [
+    { "id": 0, "from": 2, "to": 0, "edgeType": "photon"  },
+    { "id": 1, "from": 0, "to": 1, "edgeType": "fermion" },
+    { "id": 2, "from": 1, "to": 0, "edgeType": "fermion" },
+    { "id": 3, "from": 1, "to": 3, "edgeType": "photon"  }
+  ]
+}

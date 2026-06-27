@@ -4,6 +4,7 @@
      the canvas itself, since they're the same elements in both places. */
   --colour-vertex: #c9a6f2;
   --colour-external: #9fe6c0;
+  --colour-photon: #38bdf8;
   --colour-edge: #eef1e6;
   --colour-warning: #d97706;
   --colour-bg: #0f172a;
@@ -80,6 +81,38 @@ body {
   background: var(--colour-vertex);
   color: var(--colour-bg);
   border-color: var(--colour-vertex);
+}
+
+.draw-mode-palette-group {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.draw-mode-palette-btn {
+  flex: 1;
+  background: var(--colour-bg);
+  color: var(--colour-text);
+  border: 1px solid var(--colour-border);
+  border-radius: 4px;
+  padding: 0.3rem 0.5rem;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.draw-mode-palette-btn:hover {
+  background: var(--colour-border);
+}
+
+.draw-mode-palette-btn[data-edge-type="fermion"].active {
+  background: var(--colour-external);
+  color: var(--colour-bg);
+  border-color: var(--colour-external);
+}
+
+.draw-mode-palette-btn[data-edge-type="photon"].active {
+  background: var(--colour-photon);
+  color: var(--colour-bg);
+  border-color: var(--colour-photon);
 }
 
 /* ── Three-panel layout ─────────────────────────────────────────────── */
@@ -252,33 +285,43 @@ body {
 
 /* Node styles (applied via JS as SVG classes) */
 .node-vertex,
-.node-external {
+.node-qed-vertex,
+.node-external,
+.node-fermion-ext,
+.node-photon-ext {
   cursor: pointer;
 }
 
-.node-vertex circle {
+.node-vertex circle,
+.node-qed-vertex circle {
   fill: var(--colour-vertex);
   stroke: var(--colour-vertex);
   stroke-width: 2;
 }
 
-.node-vertex.selected circle {
+.node-vertex.selected circle,
+.node-qed-vertex.selected circle {
   stroke: white;
   stroke-width: 3;
 }
 
-.node-vertex.invalid circle {
+.node-vertex.invalid circle,
+.node-qed-vertex.invalid circle {
   stroke: var(--colour-warning);
   stroke-width: 3;
 }
 
 .node-vertex.group-selected circle,
-.node-external.group-selected circle {
+.node-qed-vertex.group-selected circle,
+.node-external.group-selected circle,
+.node-fermion-ext.group-selected circle,
+.node-photon-ext.group-selected circle {
   stroke: var(--chalk-highlight);
   stroke-dasharray: 4 2;
 }
 
-.node-external circle {
+.node-external circle,
+.node-fermion-ext circle {
   fill: none;
   stroke: var(--colour-external);
   stroke-width: 2.5;
@@ -286,8 +329,27 @@ body {
   /* fill:none would otherwise only hit-test the ring itself */
 }
 
-.node-external.selected circle {
+.node-external.selected circle,
+.node-fermion-ext.selected circle {
   stroke: white;
+}
+
+.node-photon-ext circle {
+  fill: none;
+  stroke: var(--colour-photon);
+  stroke-width: 2.5;
+  pointer-events: all;
+}
+
+.node-photon-ext.selected circle {
+  stroke: white;
+}
+
+.photon-node-wave {
+  fill: none;
+  stroke: var(--colour-photon);
+  stroke-width: 1.5;
+  pointer-events: none;
 }
 
 .node-label {
@@ -305,6 +367,11 @@ body {
   stroke: var(--colour-edge);
   stroke-width: 2;
   cursor: pointer;
+}
+
+.edge-line--photon {
+  stroke: var(--colour-photon);
+  stroke-width: 2.5;
 }
 
 .edge-line:hover {

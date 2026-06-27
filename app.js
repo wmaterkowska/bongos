@@ -1,5 +1,5 @@
 import { createGraph, loadFromJSON } from './src/graph.js';
-import { initCanvas, updateGraph, setTheory as setCanvasTheory, refresh as refreshCanvas } from './src/canvas.js';
+import { initCanvas, updateGraph, setTheory as setCanvasTheory, refresh as refreshCanvas, rebuildPalette } from './src/canvas.js';
 import { analyseGraph, buildContributions } from './src/rules.js';
 import { computeSymmetryFactor } from './src/symmetry.js';
 import { renderOutput } from './src/output.js';
@@ -48,13 +48,13 @@ function refreshCardCovers() {
 function updateSimplifiedPanel(currentGraph, symFactor) {
   const generation = ++amplitudeGeneration;
 
-  if (currentGraph.nodes.length === 0) {
+  if (currentGraph.nodes.length === 0 || symFactor === null) {
     simplifiedPanel.renderPlaceholder();
     return;
   }
 
   simplifiedPanel.renderLoading(!isPyodideReady());
-  simplifyAmplitude(currentGraph, symFactor)
+  simplifyAmplitude(currentGraph, symFactor, theory)
     .then(latex => {
       if (generation !== amplitudeGeneration) return;
       simplifiedPanel.renderResult(latex);
@@ -96,8 +96,9 @@ function repopulateExamples(t) {
 
 function updateTheoryChrome() {
   document.title = `Feynman Diagram Builder — ${theory.name}`;
-  document.getElementById('vertex-factor-label').textContent = theory.coupling.displaySymbol;
   repopulateExamples(theory);
+  rebuildPalette(theory);
+  document.getElementById('instruction-validation').textContent = theory.validationHint ?? '';
 }
 
 // ── Toolbar: theory select ───────────────────────────────────────────────
@@ -112,7 +113,12 @@ for (const t of Object.values(THEORIES)) {
 }
 theorySelect.value = theory.id;
 theorySelect.addEventListener('change', e => {
-  theory = THEORIES[e.target.value];
+  const newTheory = THEORIES[e.target.value];
+  graph = createGraph();
+  updateGraph(graph);
+  setExampleLabel(null);
+  quiz.setExampleMode(false);
+  theory = newTheory;
   updateTheoryChrome();
   quiz.coverAll();
   setCanvasTheory(theory);
