@@ -89,7 +89,7 @@ export function rebuildPalette (theory) {
   if (theory.supportsEdgeTypes) {
     const heading = document.createElement('p');
     heading.className = 'palette-heading';
-    heading.textContent = 'Edge type';
+    heading.textContent = 'Draw line as';
     container.appendChild(heading);
 
     const btnGroup = document.createElement('div');
