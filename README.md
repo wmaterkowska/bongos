@@ -8,7 +8,7 @@ quiz yourself on the result. No install, no build step, no server: open
 **Live app:** https://wmaterkowska.github.io/bongos/
 
 Built for physics students working through perturbative QFT for the first
-time, starting with φ⁴ scalar field theory.
+time.
 
 ## Features
 
@@ -25,20 +25,27 @@ time, starting with φ⁴ scalar field theory.
 - **Momentum routing** — every internal line gets a momentum label (arrows
   flip on click) derived from conservation at each vertex, with free loop
   momenta on non-tree edges.
-- **Symbolic simplification** — the combined amplitude is also simplified
-  via SymPy (running in-browser through Pyodide) and shown underneath the
-  canvas.
+- **Symbolic simplification** — the combined amplitude is simplified via SymPy
+  (running in-browser through Pyodide) and shown in a collapsible panel below
+  the canvas.
+- **Spin-summed |ℳ|²** — for QED tree-level diagrams, a second collapsible
+  panel shows the spin- and polarisation-averaged squared amplitude, evaluated
+  analytically using Dirac trace identities and expressed in Mandelstam
+  variables. Møller (two open chains) and Compton (one chain, two photons)
+  topologies are supported.
 - **Quiz mode** — toggle it on to hide every factor card and momentum label
   behind a blur. Click a card to reveal it; click the symmetry/momentum card
-  to also reveal the canvas's momentum labels. Any edit to the diagram, or
-  switching theory, covers everything again. Example diagrams always show
+  to also reveal the canvas momentum labels. Any edit to the diagram, or
+  switching theory, covers everything again. Example diagrams always start
   fully revealed.
-- **Example diagrams** — tree-level 2→2, the 1-loop bubble correction,
-  tadpole, and the 2-loop sunset/sunrise, loadable from the toolbar.
-
-Currently ships with φ⁴ theory only. The theory selector and Feynman-rule
-registry (`src/constants.js`) already support adding more (planned: QED,
-φ³ — see the roadmap below).
+- **Multiple theories** — switch between φ⁴, φ³, and QED from the toolbar
+  selector. Each theory has its own vertex factor, propagator, external-leg
+  rules, and example diagrams.
+- **Example diagrams** — loadable from the toolbar:
+  - φ⁴: tree-level 2→2, 1-loop bubble, tadpole, 2-loop sunset
+  - φ³: tree-level 2→2, 1-loop self-energy
+  - QED: Compton scattering, Møller scattering, Bhabha scattering,
+    e⁺e⁻ annihilation, vacuum polarisation
 
 ## Running locally
 
@@ -59,16 +66,14 @@ npx serve .
 
 KaTeX is vendored under `lib/katex/`, so diagram building, the rules engine,
 and the symmetry/momentum calculations all work fully offline. Symbolic
-simplification (the "Simplified amplitude" panel) loads Pyodide + SymPy from
-a CDN on first use, so that one feature needs network access at least once
-per session; if it's blocked or offline, the app falls back to the
-unsimplified combined-amplitude card instead of erroring.
+simplification and |ℳ|² evaluation load Pyodide + SymPy from a CDN on first
+use, so those features need network access at least once per session; if
+blocked or offline, the app falls back gracefully instead of erroring.
 
 ## Running the tests
 
-Pure-logic modules (`src/graph.js`, `src/rules.js`, `src/momentum.js`,
-`src/automorphism.js`) have console-assertion test files under `test/`,
-runnable directly with Node:
+Pure-logic modules have console-assertion test files under `test/`, runnable
+directly with Node:
 
 ```sh
 node test/graph.test.js
@@ -98,31 +103,33 @@ bongos/
 │   ├── automorphism.js   # exact symmetry factor via graph automorphism
 │   ├── momentum.js       # momentum routing (spanning tree + loop momenta)
 │   ├── output.js         # right-panel factor cards
-│   ├── simplified-panel.js, sympy-bridge.js  # Pyodide/SymPy simplification
+│   ├── sympy-bridge.js   # Pyodide/SymPy bridge (amplitude + |M|²)
+│   ├── simplified-panel.js  # collapsible simplified-amplitude panel
+│   ├── msq-panel.js         # collapsible spin-summed |M|² panel
 │   ├── quiz.js           # quiz mode cover/reveal state
 │   └── constants.js      # theory registry (vertex/propagator/leg rules)
-├── py/simplify.py         # SymPy helper run inside Pyodide
+├── py/simplify.py         # SymPy helper: amplitude simplification + |M|²
 ├── examples/              # example diagram JSON files
 └── test/                  # console-assertion unit tests
 ```
 
-## Roadmap
+## Adding a new theory
 
-This is being built incrementally. Rough shape:
+Add an entry to `THEORIES` in `src/constants.js` with vertex factor,
+propagator, external-leg rules, and legs-per-vertex. The toolbar selector,
+rules engine, canvas, and example loader all pick it up automatically.
+Set `supportsEdgeTypes: true` and define `edgeTypes` if the theory needs
+distinct edge types (as QED does for fermion vs. photon lines).
+
+## Roadmap
 
 - **v1** — core builder (shipped)
 - **v2** — symbolic simplification, momentum routing, exact symmetry factor,
-  quiz mode (this release)
-- **v3** — additional theories (QED, φ³) via the existing theory registry
+  quiz mode (shipped)
+- **v3** — φ³ and QED via the existing theory registry; spin-summed |ℳ|²
+  for QED tree-level diagrams (shipped)
 - **v4** — derive Feynman rules from a user-entered Lagrangian
 - **v5** — native mobile port (optional)
-
-## Contributing
-
-Bug fixes and new example diagrams are welcome. Adding a new theory is meant
-to be straightforward: add an entry to `THEORIES` in `src/constants.js`
-(vertex factor, propagator, external leg, legs-per-vertex) — the toolbar
-selector, rules engine, and canvas pick it up automatically.
 
 ## License
 
