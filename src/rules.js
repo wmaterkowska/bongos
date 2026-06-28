@@ -248,7 +248,7 @@ function buildQEDContributions(analysis, symmetryFactor, theory) {
     colour: '#6b7280',
     noCover: true,
     latex: '\\not{p},\\;\\gamma^\\mu,\\;\\text{traces}',
-    description: 'Numerator factors (p̸+m) in fermion propagators and the vertex Lorentz structure (γᵘ) require Dirac algebra. This tool lists each Feynman factor; index contractions and Dirac traces are left to the student.',
+    description: 'The simplified amplitude panel below writes out the full Dirac chain — spinors, γ^{μ} matrices, and propagator numerators (p̸+m) — with matching Lorentz indices. Contracting those indices and evaluating any Dirac traces is left to the student.',
   });
 
   return contributions;
