@@ -259,6 +259,210 @@ def _external_photon_latex(pf):
     return rf'\varepsilon_{{{idx}}}({sym})'
 
 
+# ── |M|² with spin/polarisation sums ─────────────────────────────────────────
+#
+# Derives the spin-summed and spin-averaged squared amplitude ⟨|M|²⟩ for
+# tree-level QED diagrams, using standard Dirac trace identities.
+#
+# Two topologies are handled analytically:
+#
+#  A) Two open chains each with one γ vertex, joined by a virtual photon.
+#     (e.g. Møller/Bhabha scattering)
+#     Spin sum → two leptonic tensors L^{μν}(a,b) contracted by (-g_{μν}/t²):
+#       L^{μν}(a,b) L_{μν}(c,d) = 32[(a·c)(b·d)+(a·d)(b·c)-m²(a·b)-m²(c·d)+2m⁴]
+#
+#  B) One open chain [γ^{μ₁} S_F(q) γ^{μ₂}] with two external photons.
+#     (e.g. Compton scattering, s-channel)
+#     Photon pol sums and fermion spin sum → single 6-gamma trace, evaluated
+#     step by step using contraction identities:
+#       γ^ν(p̸+m)γ_ν = -2p̸+4m   and   γ^μ A γ_μ  (3-gamma: -2Ã, 1-gamma: -2A)
+#     Result: T = 8(s²+st-m²t+3m⁴), ⟨|M|²⟩ = (e⁴/4)T/(s-m²)²
+
+def compute_msquared_json(payload_json):
+    """JSON entry point: compute ⟨|M|²⟩ for QED."""
+    try:
+        payload = json.loads(payload_json)
+        result  = _compute_msq(payload)
+    except Exception as exc:
+        return json.dumps({'error': str(exc)})
+
+    if result is None:
+        return json.dumps({'error': 'unsupported'})
+    if isinstance(result, dict):
+        return json.dumps(result)
+    return json.dumps({'latex': result})
+
+
+def _compute_msq(payload):
+    if payload.get('loopCount', 0) > 0:
+        return {'loop': True}
+
+    vertex_count     = payload['vertexCount']
+    symmetry_factor  = payload['symmetryFactor']
+    chains           = payload.get('fermionChains', [])
+    internal_photons = payload.get('internalPhotons', [])
+    photon_factors   = payload.get('photonFactors', [])
+    ext_legs         = payload.get('externalLegs', [])
+
+    if any(c['type'] == 'loop' for c in chains):
+        return {'loop': True}
+
+    open_chains = [c for c in chains if c['type'] == 'open']
+
+    # Spin/pol averaging: divide by 2 for each initial-state fermion or photon.
+    avg_denom = 1
+    for leg in ext_legs:
+        if leg.get('isInitial') and leg.get('spinorType') in ('u', 'vbar', 'eps'):
+            avg_denom *= 2
+
+    # (e^V / S)^2 overall coupling squared.
+    coupling_sq = _E ** (2 * vertex_count) / sp.Integer(symmetry_factor) ** 2
+    prefactor   = sp.Rational(1, avg_denom) * coupling_sq
+
+    # Case A: two open chains, one γ each, one internal photon.
+    if (len(open_chains) == 2
+            and all(len(c['steps']) == 1 and c['steps'][0]['kind'] == 'gamma'
+                    for c in open_chains)
+            and len(internal_photons) == 1
+            and not photon_factors):
+        return _msq_two_chains_photon(open_chains, internal_photons[0], prefactor)
+
+    # Case B: one open chain with [γ, prop, γ], two external photons.
+    if (len(open_chains) == 1
+            and len(open_chains[0]['steps']) == 3
+            and open_chains[0]['steps'][0]['kind'] == 'gamma'
+            and open_chains[0]['steps'][1]['kind'] == 'propagator'
+            and open_chains[0]['steps'][2]['kind'] == 'gamma'
+            and len(photon_factors) == 2
+            and not internal_photons):
+        return _msq_one_chain_two_photons(open_chains[0], photon_factors, prefactor)
+
+    return None
+
+
+def _msq_two_chains_photon(chains, photon, prefactor):
+    """
+    Topology A: L^{μν}(a,b) L_{μν}(c,d) / q²  (Møller/Bhabha type).
+
+    a = chain0.right (incoming spinor), b = chain0.left (outgoing spinor)
+    c = chain1.right,                   d = chain1.left
+
+    L^{μν}(a,b) L_{μν}(c,d) = 32[(a·c)(b·d)+(a·d)(b·c)-m²(a·b)-m²(c·d)+2m⁴]
+    """
+    c0, c1  = chains[0], chains[1]
+    a, b    = c0['rightSpinor']['symbol'], c0['leftSpinor']['symbol']
+    c, d    = c1['rightSpinor']['symbol'], c1['leftSpinor']['symbol']
+    m       = _M
+
+    def dot(x, y):
+        ix, iy = _mom_index(x), _mom_index(y)
+        if ix == iy:
+            return m ** 2
+        lo, hi = min(ix, iy), max(ix, iy)
+        return sp.Symbol(f'dot_{lo}{hi}', real=True)
+
+    llt = 32 * (dot(a, c) * dot(b, d) + dot(a, d) * dot(b, c)
+                - m ** 2 * dot(a, b) - m ** 2 * dot(c, d) + 2 * m ** 4)
+
+    # Photon propagator denominator: label as Mandelstam variable.
+    phot_mom = photon.get('momentum')
+    den_var  = _mandelstam_label(phot_mom)   # 's', 't', or 'u'
+
+    # Overall: prefactor × 32 × [...] / den²
+    coeff_latex  = sp.latex(sp.simplify(32 * prefactor))
+
+    # Dot-product bracket in LaTeX.
+    al, bl, cl, dl = (_mom_latex(x) for x in [a, b, c, d])
+    bracket = (
+        rf'({al}\cdot {cl})({bl}\cdot {dl})'
+        rf' + ({al}\cdot {dl})({bl}\cdot {cl})'
+        rf' - m^2({al}\cdot {bl})'
+        rf' - m^2({cl}\cdot {dl})'
+        rf' + 2m^4'
+    )
+
+    # Show what the denominator variable means.
+    # For t-channel (most common): den_var = 't' = (a-b)^2 = photon propagator momentum^2.
+    if phot_mom:
+        terms = phot_mom.get('terms', [])
+        mom_expr = ''.join(
+            ('' if (i == 0 and t['sign'] > 0) else ('+' if t['sign'] > 0 else '-'))
+            + _mom_latex(t['symbol'])
+            for i, t in enumerate(terms)
+        )
+        den_def = rf'{den_var} = ({mom_expr})^2'
+    else:
+        den_def = rf'{den_var} = q^2'
+
+    return (
+        rf'\begin{{aligned}}'
+        rf'&{den_def} \\'
+        rf'\overline{{|\mathcal{{M}}|^2}}'
+        rf' &= \dfrac{{{coeff_latex}}}{{{den_var}^2}}'
+        rf'\Bigl[{bracket}\Bigr]'
+        rf'\end{{aligned}}'
+    )
+
+
+def _msq_one_chain_two_photons(chain, photons, prefactor):
+    """
+    Topology B: Compton-type.
+    After photon pol sums and fermion spin sum the trace is:
+      T = Tr[(p̸_L+m) γ^{μ₂}(q̸+m)γ^{μ₁}(p̸_R+m)γ_{μ₁}(q̸+m)γ_{μ₂}]
+    Evaluated using contraction identities:
+      γ^{μ₁}(p̸_R+m)γ_{μ₁} = -2p̸_R + 4m
+      Then contract outer pair and take the trace.
+    Result (derived analytically): T = 8(s²+st-m²t+3m⁴)
+    where s = q² = (internal fermion momentum)², t = (p_R-p_L)².
+    """
+    full_coeff  = sp.simplify(8 * prefactor)
+    coeff_latex = sp.latex(full_coeff)
+
+    # External momenta for Mandelstam definitions.
+    right_sym = chain['rightSpinor']['symbol']   # incoming fermion
+    left_sym  = chain['leftSpinor']['symbol']    # outgoing fermion
+    # Identify the incoming photon symbol from photon_factors (spinorType == 'eps').
+    ph_in  = next((pf for pf in photons if pf.get('spinorType') == 'eps'),  photons[0])
+    r_l    = _mom_latex(right_sym)
+    l_l    = _mom_latex(left_sym)
+    ph_l   = _mom_latex(ph_in['symbol'])
+
+    return (
+        rf'\begin{{aligned}}'
+        rf's &= ({r_l}+{ph_l})^2 \quad t = ({r_l}-{l_l})^2 \\'
+        rf'\overline{{|\mathcal{{M}}|^2}}'
+        rf' &= \dfrac{{{coeff_latex}\left(s^2 + st - m^2 t + 3m^4\right)}}'
+        rf'{{\left(s - m^2\right)^2}}'
+        rf'\end{{aligned}}'
+    )
+
+
+def _mom_index(sym_str):
+    """'p_{3}' → 3."""
+    if '_{' in sym_str:
+        try:
+            return int(sym_str.split('_{')[1].rstrip('}'))
+        except ValueError:
+            pass
+    return 0
+
+
+def _mom_latex(sym_str):
+    """'p_{3}' → 'p_{3}' ready for LaTeX."""
+    if '_{' in sym_str:
+        idx = sym_str.split('_{')[1].rstrip('}')
+        return rf'p_{{{idx}}}'
+    return r'p'
+
+
+def _mandelstam_label(mom):
+    """Identify a propagator momentum as s, t, or u by sign pattern."""
+    if not mom or not mom.get('terms'):
+        return 't'
+    all_pos = all(term['sign'] > 0 for term in mom['terms'])
+    return 's' if all_pos else 't'
+
+
 # ── JSON entry point ──────────────────────────────────────────────────────────
 
 def simplify_amplitude_json(payload_json):

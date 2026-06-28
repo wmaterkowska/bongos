@@ -4,13 +4,15 @@ import { analyseGraph, buildContributions } from './src/rules.js';
 import { computeSymmetryFactor } from './src/symmetry.js';
 import { renderOutput } from './src/output.js';
 import { THEORIES, DEFAULT_THEORY_ID } from './src/constants.js';
-import { simplifyAmplitude, isPyodideReady } from './src/sympy-bridge.js';
+import { simplifyAmplitude, computeMSquared, isPyodideReady } from './src/sympy-bridge.js';
 import * as simplifiedPanel from './src/simplified-panel.js';
+import * as msqPanel from './src/msq-panel.js';
 import * as quiz from './src/quiz.js';
 
 let graph = createGraph();
 let theory = THEORIES[DEFAULT_THEORY_ID];
 let amplitudeGeneration = 0;
+let msqGeneration = 0;
 
 function computeContributions() {
   const analysis = analyseGraph(graph, theory);
@@ -30,6 +32,7 @@ function onGraphChange(newGraph) {
   const { analysis, symFactor, contributions } = computeContributions();
   renderOutput(contributions, analysis.warnings, onCardRevealed);
   updateSimplifiedPanel(graph, symFactor);
+  updateMSqPanel(graph, symFactor, analysis);
 }
 
 // Used only by the quiz-mode toggle: re-renders cards (cheap) and flips the
@@ -39,6 +42,7 @@ function refreshCardCovers() {
   const { analysis, contributions } = computeContributions();
   renderOutput(contributions, analysis.warnings, onCardRevealed);
   simplifiedPanel.refreshCover();
+  msqPanel.refreshCover();
   refreshCanvas();
 }
 
@@ -63,6 +67,32 @@ function updateSimplifiedPanel(currentGraph, symFactor) {
       if (generation !== amplitudeGeneration) return;
       console.error('Symbolic simplification unavailable:', err);
       simplifiedPanel.renderUnavailable();
+    });
+}
+
+function updateMSqPanel(currentGraph, symFactor, analysis) {
+  if (!theory?.supportsEdgeTypes) {
+    msqPanel.renderPlaceholder();
+    return;
+  }
+  if (currentGraph.nodes.length === 0 || symFactor === null) {
+    msqPanel.renderPlaceholder();
+    return;
+  }
+
+  const generation = ++msqGeneration;
+  msqPanel.renderLoading(!isPyodideReady());
+  computeMSquared(currentGraph, symFactor, theory, analysis)
+    .then(result => {
+      if (generation !== msqGeneration) return;
+      if (result.loop)        { msqPanel.renderLoop();        return; }
+      if (result.unsupported) { msqPanel.renderUnsupported(); return; }
+      if (result.error)       { msqPanel.renderUnsupported(); return; }
+      msqPanel.renderResult(result.latex);
+    })
+    .catch(() => {
+      if (generation !== msqGeneration) return;
+      msqPanel.renderUnavailable();
     });
 }
 

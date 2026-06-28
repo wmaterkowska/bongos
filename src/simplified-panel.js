@@ -46,7 +46,7 @@ export function renderResult(latex) {
     const formula = document.createElement('div');
     formula.className = 'simplified-formula';
     try {
-      katex.render(latex, formula, { throwOnError: false, displayMode: true });
+      katex.render(`\\mathcal{M} = ${latex}`, formula, { throwOnError: false, displayMode: true });
     } catch {
       formula.textContent = latex;
     }

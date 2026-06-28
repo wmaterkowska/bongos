@@ -188,6 +188,34 @@ function buildQEDPayload(graph, symmetryFactor) {
   });
 }
 
+// ── |M|² payload builder ─────────────────────────────────────────────────────
+
+function buildMSquaredPayload(graph, symmetryFactor, analysis) {
+  // Reuse the QED amplitude payload, then layer on the extra fields
+  // needed for |M|² (loop count, initial/final state flags per leg).
+  const base = JSON.parse(buildQEDPayload(graph, symmetryFactor));
+
+  // Leg direction: u / eps = incoming (initial state), ubar / epsstar = outgoing.
+  const extNodes = graph.nodes.filter(isExternalNode).sort((a, b) => a.id - b.id);
+  const externalLegs = extNodes.map((n, i) => {
+    const sym  = `p_{${i + 1}}`;
+    const edge = graph.edges.find(e => e.from === n.id || e.to === n.id);
+    let spinorType = null;
+    if (edge) {
+      const fromExt = edge.from === n.id;
+      if      (n.type === 'fermion-ext')  spinorType = fromExt ? 'u'      : 'ubar';
+      else if (n.type === 'positron-ext') spinorType = fromExt ? 'v'      : 'vbar';
+      else if (n.type === 'photon-ext')   spinorType = fromExt ? 'eps'    : 'epsstar';
+    }
+    const isInitial = spinorType === 'u' || spinorType === 'vbar' || spinorType === 'eps';
+    return { symbol: sym, spinorType, isInitial };
+  });
+
+  return JSON.stringify({ ...base, loopCount: analysis.L, externalLegs });
+}
+
+// ── Amplitude simplification ──────────────────────────────────────────────────
+
 // Symbolically simplifies the combined amplitude for `graph` and returns
 // its LaTeX. The JS<->Python boundary is a single JSON string each way
 // (see simplify_amplitude_json in py/simplify.py) so there's no need to
@@ -211,4 +239,17 @@ export async function simplifyAmplitude(graph, symmetryFactor, theory) {
 
   const simplifyAmplitudeJson = pyodide.globals.get('simplify_amplitude_json');
   return simplifyAmplitudeJson(payload);
+}
+
+// Computes the spin/polarisation-summed and averaged |M|² for `graph`.
+// Returns { latex, loop, unsupported } — exactly one truthy field.
+export async function computeMSquared(graph, symmetryFactor, theory, analysis) {
+  if (!theory?.supportsEdgeTypes) return { unsupported: true };
+
+  const pyodide = await getPyodide();
+  const payload = buildMSquaredPayload(graph, symmetryFactor, analysis);
+  const computeMsqJson = pyodide.globals.get('compute_msquared_json');
+  const raw  = computeMsqJson(payload);
+  const result = JSON.parse(raw);
+  return result;
 }
