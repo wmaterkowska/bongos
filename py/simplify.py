@@ -91,12 +91,30 @@ def _chain_latex(chain):
     if not steps:
         return None
 
+    if chain['type'] == 'loop':
+        evaluated = _try_evaluate_loop_trace(steps)
+        if evaluated:
+            return evaluated
+        # Fall through: show unevaluated Tr[...] for loops with ≠2 vertices.
+        step_parts = []
+        for step in steps:
+            if step['kind'] == 'gamma':
+                step_parts.append(rf'\gamma^{{{step["index"]}}}')
+            elif step['kind'] == 'propagator':
+                mom = step.get('momentum')
+                if mom:
+                    num = _slashed_momentum_latex(mom)
+                    den = _fermion_denominator_latex(mom)
+                    step_parts.append(rf'\frac{{i({num}+m)}}{{{den}}}')
+                else:
+                    step_parts.append(r'\frac{i(\not{q}+m)}{q^{2}-m^{2}}')
+        inner = r'\,'.join(step_parts)
+        return rf'(-1)\,\mathrm{{Tr}}\left[{inner}\right]'
+
     # Open chains are written right-to-left in amplitude convention,
     # i.e. opposite to the arrow-traversal order stored in `steps`.
-    ordered = list(reversed(steps)) if chain['type'] == 'open' else steps
-
     step_parts = []
-    for step in ordered:
+    for step in reversed(steps):
         if step['kind'] == 'gamma':
             step_parts.append(rf'\gamma^{{{step["index"]}}}')
         elif step['kind'] == 'propagator':
@@ -109,13 +127,56 @@ def _chain_latex(chain):
                 step_parts.append(r'\frac{i(\not{q}+m)}{q^{2}-m^{2}}')
 
     inner = r'\,'.join(step_parts)
+    left  = _spinor_latex(chain['leftSpinor'])
+    right = _spinor_latex(chain['rightSpinor'])
+    return rf'\left[{left}\,{inner}\,{right}\right]'
 
-    if chain['type'] == 'open':
-        left  = _spinor_latex(chain['leftSpinor'])
-        right = _spinor_latex(chain['rightSpinor'])
-        return rf'\left[{left}\,{inner}\,{right}\right]'
-    else:
-        return rf'(-1)\,\mathrm{{Tr}}\left[{inner}\right]'
+
+def _try_evaluate_loop_trace(steps):
+    """
+    Evaluates Tr[γ^{μ₁} (p₁̸+m) γ^{μ₂} (p₂̸+m) ...] for a 2-vertex loop
+    using the standard Dirac trace identity:
+
+        Tr[γ^μ (p̸+m) γ^ν (q̸+m)] = 4(p^μ q^ν + p^ν q^μ − g^{μν}(p·q − m²))
+
+    The factor (-1)_loop × i² = +1, so the result is always positive.
+    Returns None for loops with more than 2 QED vertices (higher-order traces
+    have a more complex tensor structure and are left unevaluated).
+    """
+    gammas = [s for s in steps if s['kind'] == 'gamma']
+    props  = [s for s in steps if s['kind'] == 'propagator']
+
+    if len(gammas) != 2 or len(props) != 2:
+        return None
+
+    idx1, idx2 = gammas[0]['index'], gammas[1]['index']
+    mom1 = props[0].get('momentum')
+    mom2 = props[1].get('momentum')
+    if not mom1 or not mom2:
+        return None
+
+    # Build vector components p^{μ} and q^{μ}.
+    p_mu1 = _momentum_vec_latex(mom1, idx1)
+    p_mu2 = _momentum_vec_latex(mom1, idx2)
+    q_mu1 = _momentum_vec_latex(mom2, idx1)
+    q_mu2 = _momentum_vec_latex(mom2, idx2)
+    pdotq = _momentum_dot_latex(mom1, mom2)
+
+    # Denominator: (p²−m²)(q²−m²).
+    den1 = _fermion_denominator_latex(mom1)
+    den2 = _fermion_denominator_latex(mom2)
+    den  = rf'\left({den1}\right)\left({den2}\right)'
+
+    # Trace tensor numerator.
+    num = (
+        rf'4\left['
+        rf'{p_mu1}{q_mu2}'
+        rf' + {p_mu2}{q_mu1}'
+        rf' - g^{{{idx1}{idx2}}}\!\left({pdotq} - m^{{2}}\right)'
+        rf'\right]'
+    )
+
+    return rf'\frac{{{num}}}{{{den}}}'
 
 
 def _spinor_latex(spinor):
@@ -154,6 +215,31 @@ def _slash_sym(sym):
         sub = rest.rstrip('}')
         return rf'\not{{{base}}}_{{{sub}}}'
     return rf'\not{{{sym}}}'
+
+
+def _momentum_vec_latex(prop, free_index):
+    """
+    Returns e.g. 'k_{1}^{\\mu_{1}}' (simple) or
+    '\\left(k_{1}-p_{2}\\right)^{\\mu_{1}}' (compound) — a 4-vector component
+    with a free Lorentz index, for use in the evaluated trace tensor.
+    """
+    q = _momentum_symbol(prop)
+    q_latex = sp.latex(q)
+    if q.is_Symbol:
+        return rf'{q_latex}^{{{free_index}}}'
+    return rf'\left({q_latex}\right)^{{{free_index}}}'
+
+
+def _momentum_dot_latex(prop1, prop2):
+    """
+    Returns the symbolic Lorentz dot product p·q as LaTeX, e.g.
+    'k_{1}\\cdot\\left(k_{1}-p_{2}\\right)'.
+    """
+    q1 = _momentum_symbol(prop1)
+    q2 = _momentum_symbol(prop2)
+    lhs = sp.latex(q1) if q1.is_Symbol else rf'\left({sp.latex(q1)}\right)'
+    rhs = sp.latex(q2) if q2.is_Symbol else rf'\left({sp.latex(q2)}\right)'
+    return rf'{lhs}\cdot {rhs}'
 
 
 def _internal_photon_latex(ip):
